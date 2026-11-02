@@ -202,6 +202,66 @@ def test_purchase_recommendation(db_session):
     db_session.rollback()
 
 
+def test_purchase_recommendation_with_agent_evaluation(db_session):
+    product = Product(name="Smart Thermostat", sku="THERM-01")
+    supplier1 = Supplier(supplier_name="Default HVAC Co")
+    supplier2 = Supplier(supplier_name="FastTrack Components")
+    db_session.add_all([product, supplier1, supplier2])
+    db_session.commit()
+
+    # Agent evaluates original recommendation and decides to MODIFY
+    rec = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=500,
+        supplier_id=supplier1.id,
+        requested_delivery_date=date(2026, 11, 20),
+        status="PENDING_APPROVAL",
+        agent_suggested_quantity=350,
+        agent_suggested_supplier_id=supplier2.id,
+        agent_reasoning="Lead time with Default HVAC Co risks stockout; FastTrack delivers in 3 days with MOQ 350.",
+        agent_decision="MODIFY",
+    )
+    db_session.add(rec)
+    db_session.commit()
+
+    assert rec.id is not None
+    assert rec.status == "PENDING_APPROVAL"
+    assert rec.agent_decision == "MODIFY"
+    assert rec.agent_suggested_quantity == 350
+    assert "FastTrack" in rec.agent_reasoning
+
+    # Verify relationships
+    assert rec.supplier.supplier_name == "Default HVAC Co"
+    assert rec.agent_suggested_supplier.supplier_name == "FastTrack Components"
+    assert rec in supplier1.purchase_recommendations
+    assert rec in supplier2.agent_evaluations
+
+    # Invalid agent_decision check constraint
+    invalid_decision_rec = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=100,
+        requested_delivery_date=date(2026, 11, 20),
+        agent_decision="INVALID_STATUS",
+    )
+    db_session.add(invalid_decision_rec)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+    # Negative agent_suggested_quantity check constraint
+    invalid_qty_rec = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=100,
+        requested_delivery_date=date(2026, 11, 20),
+        agent_suggested_quantity=-25,
+        agent_decision="ACCEPT",
+    )
+    db_session.add(invalid_qty_rec)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+
 def test_purchase_order_with_recommendation_traceability(db_session):
     product = Product(name="Steel Bolt", sku="BOLT-88")
     supplier = Supplier(supplier_name="Bolt Supply Ltd")

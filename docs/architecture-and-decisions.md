@@ -22,7 +22,7 @@ For complete field-by-field definitions, refer to [`plans/sqlite-data-models.md`
 3. **`DemandForecast`**: One-to-many with `Product`. Stores forecasted demand over `[period_start, period_end]`.
 4. **`Supplier`**: Registered vendors and supplier profiles.
 5. **`SupplierProduct`**: Association table linking `Supplier` and `Product` (many-to-many) with commercial terms: `unit_price`, `lead_time_days`, `minimum_order_quantity`. Enforces unique `(supplier_id, product_id)`.
-6. **`PurchaseRecommendation`**: Decision engine proposals with `recommended_quantity`, delivery target, and nullable `supplier_id`.
+6. **`PurchaseRecommendation`**: Decision engine proposals with `recommended_quantity`, delivery target, nullable `supplier_id`, and embedded agent evaluation attributes (`agent_suggested_quantity`, `agent_suggested_supplier_id`, `agent_reasoning`, `agent_decision` e.g. `ACCEPT`, `MODIFY`, `REJECT`, `INVESTIGATE`). The agent's decision is kept separate from workflow `status`.
 7. **`PurchaseOrder`**: Confirmed or active orders placed with suppliers (`quantity`, `unit_price`, `expected_delivery_date`, `status`). Includes optional `recommendation_id` FK to trace back to originating recommendations.
 8. **`PurchasingBudget`**: Shared budget tracking `total_budget` and `committed_amount`.
 

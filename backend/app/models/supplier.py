@@ -18,7 +18,13 @@ class Supplier(Base):
     )
     purchase_recommendations = relationship(
         "PurchaseRecommendation",
+        foreign_keys="[PurchaseRecommendation.supplier_id]",
         back_populates="supplier",
+    )
+    agent_evaluations = relationship(
+        "PurchaseRecommendation",
+        foreign_keys="[PurchaseRecommendation.agent_suggested_supplier_id]",
+        back_populates="agent_suggested_supplier",
     )
     purchase_orders = relationship(
         "PurchaseOrder",
@@ -27,4 +33,3 @@ class Supplier(Base):
 
     def __repr__(self) -> str:
         return f"<Supplier(id={self.id}, supplier_name='{self.supplier_name}')>"
-
