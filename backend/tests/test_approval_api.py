@@ -105,3 +105,4 @@ def test_approve_recommendation_direct_route(client, db_session):
     response = client.post(f"/recommendations/{rec.id}/approve")
     assert response.status_code == 200
     assert response.json()["status"] == "APPROVED"
+

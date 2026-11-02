@@ -39,3 +39,4 @@ The AI agent proposes decisions and suggested changes in `agent_*` fields withou
    - Test preservation of all original and AI fields upon approval.
 3. **Documentation:**
    - Update `docs/architecture-and-decisions.md` with approval workflow specification.
+
