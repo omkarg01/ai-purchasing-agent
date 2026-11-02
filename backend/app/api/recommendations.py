@@ -111,3 +111,44 @@ def evaluate_recommendation(
     db.commit()
     db.refresh(recommendation)
     return recommendation
+
+
+@router.post(
+    "/{recommendation_id}/approve",
+    response_model=RecommendationResponse,
+)
+def approve_recommendation(
+    recommendation_id: int,
+    db: Session = Depends(get_db),
+):
+    """Approves a purchase recommendation after human review.
+
+    Invariants enforced:
+    - Only recommendations in 'PENDING_APPROVAL' status can be approved.
+    - Transitions status strictly to 'APPROVED'.
+    - Preserves all original recommendation fields and agent evaluation fields.
+    """
+    recommendation = (
+        db.query(PurchaseRecommendation).filter_by(id=recommendation_id).first()
+    )
+    if not recommendation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Purchase recommendation not found",
+        )
+
+    if recommendation.status != "PENDING_APPROVAL":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Cannot approve recommendation with status '{recommendation.status}'. "
+                "Only recommendations with status 'PENDING_APPROVAL' can be approved."
+            ),
+        )
+
+    recommendation.status = "APPROVED"
+
+    db.commit()
+    db.refresh(recommendation)
+    return recommendation
+

@@ -139,3 +139,4 @@ def test_evaluate_recommendation_api_errors(client, db_session):
         },
     )
     assert response.status_code == 422
+

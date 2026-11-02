@@ -30,4 +30,8 @@ For complete field-by-field definitions, refer to [`plans/sqlite-data-models.md`
 - **Preservation of Purchasing History**: Purchase orders and recommendations enforce `ondelete="RESTRICT"` for `Product` and `Supplier` foreign keys, preventing cascading loss of history when catalog records are deleted.
 - **Transactional PO & Budget Updates**: Creation of any `PurchaseOrder` and the increment of `PurchasingBudget.committed_amount` must execute inside a single atomic database transaction.
 - **Evaluation API Immutability Guarantee**: The recommendation evaluation endpoint (`POST /recommendations/{id}/evaluate`) writes strictly to the `agent_suggested_*`, `agent_decision`, `agent_reasoning`, and `evaluated_at` fields. The original `recommended_quantity`, `supplier_id`, and human approval `status` are never overwritten.
+- **Human Approval Workflow (`POST /api/recommendations/{id}/approve`)**:
+  - Enforces explicit state transition: only recommendations with `status == "PENDING_APPROVAL"` may transition to `"APPROVED"`.
+  - Attempts to approve from any other state (`PENDING`, `APPROVED`, `REJECTED`) reject with `400 Bad Request`.
+  - Preserves all original recommendation attributes and all AI-generated evaluation fields intact.
 - **Explicit Table Creation Ordering**: All model modules are explicitly imported in `init_db()` prior to calling `Base.metadata.create_all()`.

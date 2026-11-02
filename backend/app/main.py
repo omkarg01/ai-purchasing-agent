@@ -15,3 +15,4 @@ app.include_router(recommendations_router, prefix="/api")
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
