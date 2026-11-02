@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -220,6 +220,7 @@ def test_purchase_recommendation_with_agent_evaluation(db_session):
         agent_suggested_supplier_id=supplier2.id,
         agent_reasoning="Lead time with Default HVAC Co risks stockout; FastTrack delivers in 3 days with MOQ 350.",
         agent_decision="MODIFY",
+        evaluated_at=datetime(2026, 11, 3, 10, 0, 0),
     )
     db_session.add(rec)
     db_session.commit()
@@ -228,6 +229,7 @@ def test_purchase_recommendation_with_agent_evaluation(db_session):
     assert rec.status == "PENDING_APPROVAL"
     assert rec.agent_decision == "MODIFY"
     assert rec.agent_suggested_quantity == 350
+    assert rec.evaluated_at == datetime(2026, 11, 3, 10, 0, 0)
     assert "FastTrack" in rec.agent_reasoning
 
     # Verify relationships

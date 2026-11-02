@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, Date, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database.session import Base
@@ -24,7 +24,7 @@ class PurchaseRecommendation(Base):
     requested_delivery_date = Column(Date, nullable=False)
     status = Column(String(50), nullable=False, default="PENDING")
 
-    # Agent evaluation fields
+    # Agent evaluation fields (separate from approval status)
     agent_suggested_quantity = Column(Integer, nullable=True)
     agent_suggested_supplier_id = Column(
         Integer,
@@ -34,6 +34,7 @@ class PurchaseRecommendation(Base):
     )
     agent_reasoning = Column(Text, nullable=True)
     agent_decision = Column(String(20), nullable=True)
+    evaluated_at = Column(DateTime, nullable=True)
 
     __table_args__ = (
         CheckConstraint(
@@ -68,5 +69,6 @@ class PurchaseRecommendation(Base):
         return (
             f"<PurchaseRecommendation(id={self.id}, product_id={self.product_id}, "
             f"supplier_id={self.supplier_id}, quantity={self.recommended_quantity}, "
-            f"status='{self.status}', agent_decision='{self.agent_decision}')>"
+            f"status='{self.status}', agent_decision='{self.agent_decision}', "
+            f"evaluated_at='{self.evaluated_at}')>"
         )
