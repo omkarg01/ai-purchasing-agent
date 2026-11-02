@@ -114,3 +114,4 @@ def evaluate_supplier_product(
         is_storage_feasible=is_storage_feasible,
         trade_offs=trade_offs,
     )
+
