@@ -27,3 +27,4 @@ class RecommendationResponse(BaseModel):
     agent_suggested_supplier_id: Optional[int] = None
     agent_reasoning: Optional[str] = None
     evaluated_at: Optional[datetime] = None
+
