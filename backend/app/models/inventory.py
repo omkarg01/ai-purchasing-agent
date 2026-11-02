@@ -5,6 +5,12 @@ from app.database.session import Base
 
 
 class Inventory(Base):
+    """Represents current warehouse stock and capacity for a product.
+    
+    Note: available_quantity represents stock available for purchasing decisions
+    after existing reservations have been accounted for. Reserved quantity is
+    intentionally omitted for the MVP scope.
+    """
     __tablename__ = "inventories"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -15,7 +21,13 @@ class Inventory(Base):
         unique=True,
         index=True,
     )
-    available_quantity = Column(Integer, nullable=False, default=0)
+    # Available quantity: unreserved physical stock available for purchasing decisions
+    available_quantity = Column(
+        Integer,
+        nullable=False,
+        default=0,
+        comment="Stock available for purchasing decisions after existing reservations have been accounted for",
+    )
     storage_capacity = Column(Integer, nullable=False)
 
     __table_args__ = (
@@ -37,4 +49,3 @@ class Inventory(Base):
             f"<Inventory(id={self.id}, product_id={self.product_id}, "
             f"available={self.available_quantity}, capacity={self.storage_capacity})>"
         )
-

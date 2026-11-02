@@ -36,10 +36,19 @@ def get_db():
 
 
 def init_db(engine_override=None):
-    """Creates all database tables registered with Base.metadata."""
-    # Import all models to ensure they are registered with Base.metadata
-    from app import models  # noqa: F401
+    """Creates all database tables registered with Base.metadata.
+    
+    Ensures all model modules are imported and registered before create_all() executes.
+    """
+    import app.models  # noqa: F401
+    import app.models.product  # noqa: F401
+    import app.models.inventory  # noqa: F401
+    import app.models.demand_forecast  # noqa: F401
+    import app.models.supplier  # noqa: F401
+    import app.models.supplier_product  # noqa: F401
+    import app.models.purchase_recommendation  # noqa: F401
+    import app.models.purchase_order  # noqa: F401
+    import app.models.purchasing_budget  # noqa: F401
 
     target_engine = engine_override or engine
     Base.metadata.create_all(bind=target_engine)
-

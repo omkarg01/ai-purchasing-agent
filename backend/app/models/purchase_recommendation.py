@@ -10,14 +10,14 @@ class PurchaseRecommendation(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     product_id = Column(
         Integer,
-        ForeignKey("products.id", ondelete="CASCADE"),
+        ForeignKey("products.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
     recommended_quantity = Column(Integer, nullable=False)
     supplier_id = Column(
         Integer,
-        ForeignKey("suppliers.id", ondelete="SET NULL"),
+        ForeignKey("suppliers.id", ondelete="RESTRICT"),
         nullable=True,
         index=True,
     )
@@ -34,6 +34,7 @@ class PurchaseRecommendation(Base):
     # Relationships
     product = relationship("Product", back_populates="purchase_recommendations")
     supplier = relationship("Supplier", back_populates="purchase_recommendations")
+    purchase_orders = relationship("PurchaseOrder", back_populates="recommendation")
 
     def __repr__(self) -> str:
         return (
@@ -41,4 +42,3 @@ class PurchaseRecommendation(Base):
             f"supplier_id={self.supplier_id}, quantity={self.recommended_quantity}, "
             f"status='{self.status}')>"
         )
-

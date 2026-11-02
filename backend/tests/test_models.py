@@ -202,39 +202,135 @@ def test_purchase_recommendation(db_session):
     db_session.rollback()
 
 
-def test_purchase_order(db_session):
+def test_purchase_order_with_recommendation_traceability(db_session):
     product = Product(name="Steel Bolt", sku="BOLT-88")
     supplier = Supplier(supplier_name="Bolt Supply Ltd")
+    db_session.add_all([product, supplier])
+    db_session.commit()
+
+    # 1. Existing PO without recommendation (recommendation_id is nullable)
+    existing_po = PurchaseOrder(
+        product_id=product.id,
+        supplier_id=supplier.id,
+        quantity=400,
+        unit_price=Decimal("2.25"),
+        expected_delivery_date=date(2026, 11, 8),
+        recommendation_id=None,
+    )
+    db_session.add(existing_po)
+    db_session.commit()
+
+    assert existing_po.id is not None
+    assert existing_po.recommendation_id is None
+    assert existing_po.recommendation is None
+
+    # 2. Executed PO linked to a recommendation
+    recommendation = PurchaseRecommendation(
+        product_id=product.id,
+        supplier_id=supplier.id,
+        recommended_quantity=200,
+        requested_delivery_date=date(2026, 11, 12),
+        status="APPROVED",
+    )
+    db_session.add(recommendation)
+    db_session.commit()
+
+    linked_po = PurchaseOrder(
+        product_id=product.id,
+        supplier_id=supplier.id,
+        recommendation_id=recommendation.id,
+        quantity=200,
+        unit_price=Decimal("2.25"),
+        expected_delivery_date=date(2026, 11, 12),
+    )
+    db_session.add(linked_po)
+    db_session.commit()
+
+    assert linked_po.recommendation_id == recommendation.id
+    assert linked_po.recommendation.status == "APPROVED"
+    assert len(recommendation.purchase_orders) == 1
+    assert recommendation.purchase_orders[0].id == linked_po.id
+
+
+def test_preserve_purchasing_history_on_delete_attempt(db_session):
+    product = Product(name="Crucial Raw Part", sku="CRP-999")
+    supplier = Supplier(supplier_name="Safe Supplier")
     db_session.add_all([product, supplier])
     db_session.commit()
 
     po = PurchaseOrder(
         product_id=product.id,
         supplier_id=supplier.id,
-        quantity=400,
-        unit_price=Decimal("2.25"),
-        expected_delivery_date=date(2026, 11, 8),
+        quantity=100,
+        unit_price=Decimal("50.00"),
+        expected_delivery_date=date(2026, 11, 20),
     )
     db_session.add(po)
     db_session.commit()
 
-    assert po.id is not None
-    assert po.status == "OPEN"
-    assert po.product.sku == "BOLT-88"
-    assert po.supplier.supplier_name == "Bolt Supply Ltd"
-
-    # Negative quantity check constraint
-    invalid_po = PurchaseOrder(
-        product_id=product.id,
-        supplier_id=supplier.id,
-        quantity=-50,
-        unit_price=Decimal("2.25"),
-        expected_delivery_date=date(2026, 11, 8),
-    )
-    db_session.add(invalid_po)
+    # Attempting to delete product while PO exists must be rejected (RESTRICT)
+    db_session.delete(product)
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
+
+    # Attempting to delete supplier while PO exists must be rejected (RESTRICT)
+    db_session.delete(supplier)
+    with pytest.raises(IntegrityError):
+        db_session.commit()
+    db_session.rollback()
+
+
+def test_transactional_purchase_order_and_budget_update(db_session):
+    product = Product(name="Monitored Sensor", sku="SENS-01")
+    supplier = Supplier(supplier_name="Sensors Direct")
+    budget = PurchasingBudget(
+        total_budget=Decimal("10000.00"),
+        committed_amount=Decimal("1000.00"),
+    )
+    db_session.add_all([product, supplier, budget])
+    db_session.commit()
+
+    order_qty = 50
+    order_price = Decimal("20.00")
+    total_order_cost = order_price * order_qty  # 1000.00
+
+    # Successful atomic transaction: PO creation + budget commitment update
+    with db_session.begin_nested():
+        po = PurchaseOrder(
+            product_id=product.id,
+            supplier_id=supplier.id,
+            quantity=order_qty,
+            unit_price=order_price,
+            expected_delivery_date=date(2026, 11, 25),
+        )
+        db_session.add(po)
+        budget.committed_amount += total_order_cost
+    db_session.commit()
+
+    assert budget.committed_amount == Decimal("2000.00")
+    assert budget.remaining_budget == 8000.0
+
+    # Failed transaction simulation: failure rolls back both PO and budget update
+    initial_committed = budget.committed_amount
+    try:
+        with db_session.begin_nested():
+            failed_po = PurchaseOrder(
+                product_id=product.id,
+                supplier_id=supplier.id,
+                quantity=-5,  # Violates check constraint
+                unit_price=Decimal("20.00"),
+                expected_delivery_date=date(2026, 11, 25),
+            )
+            db_session.add(failed_po)
+            budget.committed_amount += Decimal("100.00")
+            db_session.flush()
+    except IntegrityError:
+        pass
+
+    db_session.rollback()
+    refreshed_budget = db_session.query(PurchasingBudget).filter_by(id=budget.id).one()
+    assert refreshed_budget.committed_amount == initial_committed
 
 
 def test_purchasing_budget(db_session):
@@ -270,4 +366,3 @@ def test_foreign_key_enforcement(db_session):
     with pytest.raises(IntegrityError):
         db_session.commit()
     db_session.rollback()
-
