@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -62,3 +62,14 @@ def init_db(engine_override=None):
 
     target_engine = engine_override or engine
     Base.metadata.create_all(bind=target_engine)
+
+    # Automatic schema migration for existing SQLite databases
+    with target_engine.connect() as conn:
+        try:
+            res = conn.execute(text("PRAGMA table_info(supplier_products)"))
+            existing_cols = {row[1] for row in res.fetchall()}
+            if existing_cols and "available_capacity" not in existing_cols:
+                conn.execute(text("ALTER TABLE supplier_products ADD COLUMN available_capacity INTEGER NULL"))
+                conn.commit()
+        except Exception:
+            pass
