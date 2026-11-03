@@ -24,3 +24,8 @@ htmlcov/
 .vscode/
 .idea/
 
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/

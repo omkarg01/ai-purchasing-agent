@@ -140,3 +140,83 @@ def test_evaluate_recommendation_api_errors(client, db_session):
     )
     assert response.status_code == 422
 
+
+def test_list_recommendations_api(client, db_session):
+    product = Product(name="O-Ring", sku="ORING-01")
+    db_session.add(product)
+    db_session.commit()
+
+    rec1 = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=100,
+        requested_delivery_date=date(2026, 12, 1),
+    )
+    rec2 = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=200,
+        requested_delivery_date=date(2026, 12, 10),
+    )
+    db_session.add_all([rec1, rec2])
+    db_session.commit()
+
+    response = client.get("/api/recommendations")
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) >= 2
+    ids = [item["id"] for item in items]
+    assert rec1.id in ids
+    assert rec2.id in ids
+
+
+def test_run_evaluation_with_engine_api(client, db_session):
+    from decimal import Decimal
+    from app.models import Inventory, DemandForecast, SupplierProduct
+
+    product = Product(name="Electric Motor", sku="MOT-01")
+    supplier = Supplier(supplier_name="Motor Dynamics")
+    db_session.add_all([product, supplier])
+    db_session.commit()
+
+    inv = Inventory(
+        product_id=product.id,
+        available_quantity=50,
+        storage_capacity=1000,
+    )
+    forecast = DemandForecast(
+        product_id=product.id,
+        forecast_quantity=200,
+        period_start=date(2026, 11, 1),
+        period_end=date(2026, 11, 15),
+    )
+    sp = SupplierProduct(
+        supplier_id=supplier.id,
+        product_id=product.id,
+        unit_price=Decimal("45.00"),
+        lead_time_days=3,
+        minimum_order_quantity=150,
+    )
+    db_session.add_all([inv, forecast, sp])
+    db_session.commit()
+
+    rec = PurchaseRecommendation(
+        product_id=product.id,
+        recommended_quantity=100,
+        supplier_id=supplier.id,
+        requested_delivery_date=date(2026, 11, 10),
+        status="PENDING",
+    )
+    db_session.add(rec)
+    db_session.commit()
+
+    response = client.post(f"/api/recommendations/{rec.id}/run-evaluation")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == rec.id
+    assert data["agent_decision"] in ("ACCEPT", "MODIFY", "INVESTIGATE")
+    assert data["agent_suggested_quantity"] is not None
+    assert data["status"] == "PENDING_APPROVAL"
+    assert data["evaluated_at"] is not None
+    assert data["recommended_quantity"] == 100
+    assert data["supplier_id"] == supplier.id
+
+
