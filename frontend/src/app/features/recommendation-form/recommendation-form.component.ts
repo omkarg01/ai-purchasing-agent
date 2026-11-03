@@ -62,6 +62,7 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
               name="productId"
               class="form-control"
               [(ngModel)]="formData.productId"
+              (ngModelChange)="onProductChange($event)"
               required
               [disabled]="isEditMode() || isApproved()"
             >
@@ -89,11 +90,11 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
             >
               <option [ngValue]="null">-- Auto-evaluate best supplier with AI --</option>
               <option *ngFor="let supp of suppliers()" [ngValue]="supp.id">
-                {{ supp.supplier_name }} (ID #{{ supp.id }})
+                {{ supp.supplier_name }} (ID #{{ supp.id }})<span *ngIf="supp.unit_price"> - \${{ supp.unit_price | number:'1.2-2' }}/unit</span>
               </option>
             </select>
             <span class="field-hint">
-              Optional. The decision engine will verify if this supplier is optimal or suggest an alternative.
+              Showing only suppliers registered for the selected product. The engine will verify if this supplier is optimal or suggest an alternative.
             </span>
           </div>
 
@@ -135,7 +136,7 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
                 >
                   <option [ngValue]="null" disabled>Select primary vendor...</option>
                   <option *ngFor="let supp of suppliers()" [ngValue]="supp.id">
-                    {{ supp.supplier_name }} (ID #{{ supp.id }})
+                    {{ supp.supplier_name }} (ID #{{ supp.id }})<span *ngIf="supp.unit_price"> - \${{ supp.unit_price | number:'1.2-2' }}/unit</span>
                   </option>
                 </select>
               </div>
@@ -168,7 +169,7 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
                 >
                   <option [ngValue]="null" disabled>Select secondary vendor...</option>
                   <option *ngFor="let supp of suppliers()" [ngValue]="supp.id">
-                    {{ supp.supplier_name }} (ID #{{ supp.id }})
+                    {{ supp.supplier_name }} (ID #{{ supp.id }})<span *ngIf="supp.unit_price"> - \${{ supp.unit_price | number:'1.2-2' }}/unit</span>
                   </option>
                 </select>
               </div>
@@ -188,6 +189,9 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
               </div>
             </div>
 
+            <div *ngIf="suppliers().length < 2" class="split-warning-banner">
+              ⚠️ This product has only {{ suppliers().length }} supplier registered. Split sourcing requires at least 2 registered suppliers.
+            </div>
             <div *ngIf="!isSplitQuantityMatched()" class="split-warning-banner">
               ⚠️ Sum of split units ({{ splitTotalQuantity() }}) must equal recommended quantity ({{ formData.quantity || 0 }}).
             </div>
@@ -566,50 +570,76 @@ export class RecommendationFormComponent implements OnInit {
   loadCatalogAndData(): void {
     this.loadingData.set(true);
 
-    // 1. Load catalog dropdowns
     this.recommendationService.getProducts().subscribe({
-      next: (prods) => this.products.set(prods),
-      error: () => this.errorMessage.set('Failed to load product catalog.'),
-    });
+      next: (prods) => {
+        this.products.set(prods);
 
-    this.recommendationService.getSuppliers().subscribe({
-      next: (supps) => this.suppliers.set(supps),
-      error: () => this.errorMessage.set('Failed to load supplier catalog.'),
-    });
+        const recId = this.recommendationId();
+        if (recId) {
+          this.recommendationService.getById(recId).subscribe({
+            next: (rec) => {
+              this.existingRecommendation.set(rec);
+              this.formData.productId = rec.product_id;
+              this.formData.supplierId = rec.supplier_id;
+              this.formData.quantity = rec.recommended_quantity;
+              this.formData.deliveryDate = rec.requested_delivery_date;
 
-    // 2. If edit mode, load recommendation
-    const recId = this.recommendationId();
-    if (recId) {
-      this.recommendationService.getById(recId).subscribe({
-        next: (rec) => {
-          this.existingRecommendation.set(rec);
-          this.formData.productId = rec.product_id;
-          this.formData.supplierId = rec.supplier_id;
-          this.formData.quantity = rec.recommended_quantity;
-          this.formData.deliveryDate = rec.requested_delivery_date;
+              if (rec.split_allocation) {
+                this.isSplitEnabled.set(true);
+                this.splitData.primarySupplierId = rec.split_allocation.primary_supplier_id;
+                this.splitData.primaryQuantity = rec.split_allocation.primary_quantity;
+                this.splitData.secondarySupplierId = rec.split_allocation.secondary_supplier_id;
+                this.splitData.secondaryQuantity = rec.split_allocation.secondary_quantity;
+              }
 
-          if (rec.split_allocation) {
-            this.isSplitEnabled.set(true);
-            this.splitData.primarySupplierId = rec.split_allocation.primary_supplier_id;
-            this.splitData.primaryQuantity = rec.split_allocation.primary_quantity;
-            this.splitData.secondarySupplierId = rec.split_allocation.secondary_supplier_id;
-            this.splitData.secondaryQuantity = rec.split_allocation.secondary_quantity;
+              this.loadSuppliersForProduct(rec.product_id);
+              this.loadingData.set(false);
+            },
+            error: (err) => {
+              this.loadingData.set(false);
+              this.errorMessage.set(err.error?.detail || 'Failed to load recommendation.');
+            }
+          });
+        } else {
+          const defaultDate = new Date();
+          defaultDate.setDate(defaultDate.getDate() + 7);
+          this.formData.deliveryDate = defaultDate.toISOString().split('T')[0];
+
+          if (prods.length > 0) {
+            this.formData.productId = prods[0].id;
+            this.loadSuppliersForProduct(prods[0].id);
+          } else {
+            this.suppliers.set([]);
           }
-
           this.loadingData.set(false);
-        },
-        error: (err) => {
-          this.loadingData.set(false);
-          this.errorMessage.set(err.error?.detail || 'Failed to load recommendation.');
         }
-      });
+      },
+      error: () => {
+        this.loadingData.set(false);
+        this.errorMessage.set('Failed to load product catalog.');
+      },
+    });
+  }
+
+  onProductChange(newProductId: number): void {
+    this.formData.productId = newProductId;
+    this.formData.supplierId = null;
+    this.splitData.primarySupplierId = null;
+    this.splitData.secondarySupplierId = null;
+    if (newProductId) {
+      this.loadSuppliersForProduct(newProductId);
     } else {
-      // Default delivery date to 7 days from now
-      const defaultDate = new Date();
-      defaultDate.setDate(defaultDate.getDate() + 7);
-      this.formData.deliveryDate = defaultDate.toISOString().split('T')[0];
-      this.loadingData.set(false);
+      this.suppliers.set([]);
     }
+  }
+
+  loadSuppliersForProduct(productId: number): void {
+    this.recommendationService.getSuppliers(productId).subscribe({
+      next: (supps) => {
+        this.suppliers.set(supps);
+      },
+      error: () => this.errorMessage.set('Failed to load suppliers for selected product.'),
+    });
   }
 
   splitTotalQuantity(): number {
@@ -633,14 +663,21 @@ export class RecommendationFormComponent implements OnInit {
   toggleSplit(): void {
     const next = !this.isSplitEnabled();
     this.isSplitEnabled.set(next);
-    if (next && !this.splitData.primarySupplierId) {
-      this.splitData.primarySupplierId = this.formData.supplierId || (this.suppliers()[0]?.id ?? null);
+    if (next) {
+      const avail = this.suppliers();
+      if (avail.length > 0 && !this.splitData.primarySupplierId) {
+        this.splitData.primarySupplierId = this.formData.supplierId || avail[0].id;
+      }
+      if (avail.length > 1 && !this.splitData.secondarySupplierId) {
+        const alt = avail.find(s => s.id !== this.splitData.primarySupplierId);
+        this.splitData.secondarySupplierId = alt ? alt.id : avail[1].id;
+      }
       const half = Math.floor((this.formData.quantity || 0) / 2);
-      this.splitData.primaryQuantity = half;
-      this.splitData.secondaryQuantity = (this.formData.quantity || 0) - half;
-      if (this.suppliers().length > 1) {
-        const alt = this.suppliers().find(s => s.id !== this.splitData.primarySupplierId);
-        this.splitData.secondarySupplierId = alt?.id ?? null;
+      if (!this.splitData.primaryQuantity) {
+        this.splitData.primaryQuantity = half;
+      }
+      if (!this.splitData.secondaryQuantity) {
+        this.splitData.secondaryQuantity = (this.formData.quantity || 0) - (this.splitData.primaryQuantity || half);
       }
     }
   }
@@ -677,11 +714,11 @@ export class RecommendationFormComponent implements OnInit {
       : this.formData.supplierId;
 
     if (this.isEditMode() && this.recommendationId()) {
-      const updatePayload: any = {
-        recommended_quantity: this.formData.quantity,
-        supplier_id: effectiveSupplierId,
-        requested_delivery_date: this.formData.deliveryDate,
-      };
+        const updatePayload: any = {
+          recommended_quantity: this.formData.quantity,
+          supplier_id: effectiveSupplierId,
+          requested_delivery_date: this.formData.deliveryDate,
+        };
       if (this.isSplitEnabled() && split_alloc) {
         updatePayload.split_allocation = split_alloc;
       } else if (!this.isSplitEnabled() && this.existingRecommendation()?.split_allocation) {
@@ -699,12 +736,12 @@ export class RecommendationFormComponent implements OnInit {
         }
       });
     } else {
-      const createPayload: any = {
-        product_id: this.formData.productId,
-        supplier_id: effectiveSupplierId,
-        recommended_quantity: this.formData.quantity,
-        requested_delivery_date: this.formData.deliveryDate,
-      };
+        const createPayload: any = {
+          product_id: this.formData.productId,
+          supplier_id: effectiveSupplierId,
+          recommended_quantity: this.formData.quantity,
+          requested_delivery_date: this.formData.deliveryDate,
+        };
       if (split_alloc) {
         createPayload.split_allocation = split_alloc;
       }

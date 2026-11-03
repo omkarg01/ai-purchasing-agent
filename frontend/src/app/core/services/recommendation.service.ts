@@ -55,7 +55,10 @@ export class RecommendationService {
     return this.http.get<ProductLookup[]>(`${this.catalogUrl}/products`);
   }
 
-  getSuppliers(): Observable<SupplierLookup[]> {
-    return this.http.get<SupplierLookup[]>(`${this.catalogUrl}/suppliers`);
+  getSuppliers(productId?: number | null): Observable<SupplierLookup[]> {
+    const url = productId
+      ? `${this.catalogUrl}/suppliers?product_id=${productId}`
+      : `${this.catalogUrl}/suppliers`;
+    return this.http.get<SupplierLookup[]>(url);
   }
 }

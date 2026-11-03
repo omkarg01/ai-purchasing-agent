@@ -63,13 +63,18 @@ def test_catalog_endpoints(crud_client_and_db):
     assert prods[0]["id"] == prod_id
     assert prods[0]["name"] == "CRUD Test Widget"
 
-    # Test /api/catalog/suppliers
+    # Test /api/catalog/suppliers without filter
     supp_resp = client.get("/api/catalog/suppliers")
     assert supp_resp.status_code == 200
     supps = supp_resp.json()
     assert len(supps) == 1
     assert supps[0]["id"] == supp_id
     assert supps[0]["supplier_name"] == "Acme Parts Corp"
+
+    # Test /api/catalog/suppliers with product_id filter (no mapping yet -> empty)
+    filtered_resp = client.get(f"/api/catalog/suppliers?product_id={prod_id}")
+    assert filtered_resp.status_code == 200
+    assert filtered_resp.json() == []
 
 
 def test_create_recommendation_success(crud_client_and_db):

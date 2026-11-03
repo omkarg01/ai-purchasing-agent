@@ -60,6 +60,10 @@ export interface ProductLookup {
 export interface SupplierLookup {
   id: number;
   supplier_name: string;
+  unit_price?: number | null;
+  lead_time_days?: number | null;
+  minimum_order_quantity?: number | null;
+  available_capacity?: number | null;
 }
 
 export interface EvaluationPayload {

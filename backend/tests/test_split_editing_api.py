@@ -146,3 +146,4 @@ def test_approve_split_recommendation_creates_purchase_orders(client, split_cata
     assert po_sup1.unit_price == Decimal("10.00")
     assert po_sup2.quantity == 250
     assert po_sup2.unit_price == Decimal("12.00")
+

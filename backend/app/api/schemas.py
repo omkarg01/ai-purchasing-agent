@@ -73,6 +73,10 @@ class SupplierLookupResponse(BaseModel):
 
     id: int
     supplier_name: str
+    unit_price: Optional[float] = None
+    lead_time_days: Optional[int] = None
+    minimum_order_quantity: Optional[int] = None
+    available_capacity: Optional[int] = None
 
 
 class RecommendationResponse(BaseModel):
