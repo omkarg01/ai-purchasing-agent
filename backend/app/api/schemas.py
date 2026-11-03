@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +10,37 @@ class EvaluationRequest(BaseModel):
     agent_suggested_supplier_id: Optional[int] = None
     agent_reasoning: Optional[str] = None
     evaluated_at: Optional[datetime] = None
+
+
+class ValueChange(BaseModel):
+    previous: Any
+    updated: Any
+    previous_name: Optional[str] = None
+    updated_name: Optional[str] = None
+
+
+class BuyerModifications(BaseModel):
+    quantity: Optional[ValueChange] = None
+    supplier: Optional[ValueChange] = None
+
+
+class EvaluationHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    recommendation_id: int
+    evaluation_sequence: int
+    evaluated_quantity: int
+    evaluated_supplier_id: Optional[int] = None
+    evaluated_supplier_name: Optional[str] = None
+    agent_decision: str
+    explanation: Optional[str] = None
+    calculations: Optional[Dict[str, Any]] = None
+    risks: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    buyer_modifications: Optional[BuyerModifications] = None
+    evaluated_at: datetime
+
 
 
 class RecommendationCreateRequest(BaseModel):
@@ -60,3 +91,94 @@ class RecommendationResponse(BaseModel):
     agent_suggested_supplier_name: Optional[str] = None
     agent_reasoning: Optional[str] = None
     evaluated_at: Optional[datetime] = None
+
+
+class ValueChange(BaseModel):
+    previous: Any
+    updated: Any
+    previous_name: Optional[str] = None
+    updated_name: Optional[str] = None
+
+
+class BuyerModifications(BaseModel):
+    quantity: Optional[ValueChange] = None
+    supplier: Optional[ValueChange] = None
+
+
+class EvaluationHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    recommendation_id: int
+    evaluation_sequence: int
+    evaluated_quantity: int
+    evaluated_supplier_id: Optional[int] = None
+    evaluated_supplier_name: Optional[str] = None
+    agent_decision: str
+    explanation: Optional[str] = None
+    calculations: Optional[Dict[str, Any]] = None
+    risks: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    buyer_modifications: Optional[BuyerModifications] = None
+    evaluated_at: datetime
+
+
+class ValueChange(BaseModel):
+    previous: Any
+    updated: Any
+    previous_name: Optional[str] = None
+    updated_name: Optional[str] = None
+
+
+class BuyerModifications(BaseModel):
+    quantity: Optional[ValueChange] = None
+    supplier: Optional[ValueChange] = None
+
+
+class EvaluationHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    recommendation_id: int
+    evaluation_sequence: int
+    evaluated_quantity: int
+    evaluated_supplier_id: Optional[int] = None
+    evaluated_supplier_name: Optional[str] = None
+    agent_decision: str
+    explanation: Optional[str] = None
+    calculations: Optional[Dict[str, Any]] = None
+    risks: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    buyer_modifications: Optional[BuyerModifications] = None
+    evaluated_at: datetime
+
+
+
+class ValueChange(BaseModel):
+    previous: Any
+    updated: Any
+    previous_name: Optional[str] = None
+    updated_name: Optional[str] = None
+
+
+class BuyerModifications(BaseModel):
+    quantity: Optional[ValueChange] = None
+    supplier: Optional[ValueChange] = None
+
+
+class EvaluationHistoryResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    recommendation_id: int
+    evaluation_sequence: int
+    evaluated_quantity: int
+    evaluated_supplier_id: Optional[int] = None
+    evaluated_supplier_name: Optional[str] = None
+    agent_decision: str
+    explanation: Optional[str] = None
+    calculations: Optional[Dict[str, Any]] = None
+    risks: Optional[List[str]] = None
+    warnings: Optional[List[str]] = None
+    buyer_modifications: Optional[BuyerModifications] = None
+    evaluated_at: datetime

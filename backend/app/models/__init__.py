@@ -1,5 +1,6 @@
 from app.database.session import Base
 from app.models.demand_forecast import DemandForecast
+from app.models.evaluation_history import EvaluationHistory
 from app.models.inventory import Inventory
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
@@ -16,6 +17,7 @@ __all__ = [
     "Supplier",
     "SupplierProduct",
     "PurchaseRecommendation",
+    "EvaluationHistory",
     "PurchaseOrder",
     "PurchasingBudget",
 ]

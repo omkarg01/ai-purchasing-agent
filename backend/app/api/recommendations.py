@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
+    EvaluationHistoryResponse,
     EvaluationRequest,
     RecommendationCreateRequest,
     RecommendationResponse,
@@ -23,6 +24,7 @@ from app.decision_engine import (
     evaluate_purchasing_decision,
 )
 from app.models.demand_forecast import DemandForecast
+from app.models.evaluation_history import EvaluationHistory
 from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
 from app.models.purchase_recommendation import PurchaseRecommendation
@@ -403,19 +405,92 @@ def run_evaluation_with_engine(
     original_recommended_quantity = recommendation.recommended_quantity
     original_supplier_id = recommendation.supplier_id
 
-    # Update recommendation with evaluation results
-    recommendation.agent_decision = decision_result.decision
-    recommendation.agent_suggested_quantity = decision_result.suggested_quantity
-    recommendation.agent_suggested_supplier_id = decision_result.suggested_supplier_id
-    recommendation.agent_reasoning = "\n\n".join(decision_result.reasoning_points)
-    recommendation.evaluated_at = datetime.now(timezone.utc)
-    recommendation.status = "PENDING_APPROVAL"
+    # 1. Fetch previous evaluation snapshot to calculate buyer modifications
+    previous_run = (
+        db.query(EvaluationHistory)
+        .filter_by(recommendation_id=recommendation.id)
+        .order_by(EvaluationHistory.evaluation_sequence.desc())
+        .first()
+    )
 
-    # Protect original fields
-    assert recommendation.recommended_quantity == original_recommended_quantity
-    assert recommendation.supplier_id == original_supplier_id
+    if previous_run is None:
+        sequence = 1
+        buyer_modifications = None
+    else:
+        sequence = previous_run.evaluation_sequence + 1
+        mods = {}
+        if recommendation.recommended_quantity != previous_run.evaluated_quantity:
+            mods["quantity"] = {
+                "previous": previous_run.evaluated_quantity,
+                "updated": recommendation.recommended_quantity,
+            }
+        if recommendation.supplier_id != previous_run.evaluated_supplier_id:
+            mods["supplier"] = {
+                "previous": previous_run.evaluated_supplier_id,
+                "updated": recommendation.supplier_id,
+                "previous_name": previous_run.evaluated_supplier_name,
+                "updated_name": recommendation.supplier_name,
+            }
+        buyer_modifications = mods if mods else None
 
-    db.commit()
-    db.refresh(recommendation)
-    return recommendation
+    # 2. Atomic persistence: update recommendation & insert EvaluationHistory in one transaction
+    try:
+        recommendation.agent_decision = decision_result.decision
+        recommendation.agent_suggested_quantity = decision_result.suggested_quantity
+        recommendation.agent_suggested_supplier_id = decision_result.suggested_supplier_id
+        recommendation.agent_reasoning = "\n\n".join(decision_result.reasoning_points)
+        eval_time = datetime.now(timezone.utc)
+        recommendation.evaluated_at = eval_time
+        recommendation.status = "PENDING_APPROVAL"
+
+        # Protect original fields
+        assert recommendation.recommended_quantity == original_recommended_quantity
+        assert recommendation.supplier_id == original_supplier_id
+
+        history_entry = EvaluationHistory(
+            recommendation_id=recommendation.id,
+            evaluation_sequence=sequence,
+            evaluated_quantity=recommendation.recommended_quantity,
+            evaluated_supplier_id=recommendation.supplier_id,
+            evaluated_supplier_name=recommendation.supplier_name,
+            agent_decision=decision_result.decision,
+            explanation=recommendation.agent_reasoning,
+            calculations=decision_result.calculations,
+            risks=decision_result.risks,
+            warnings=decision_result.warnings,
+            buyer_modifications=buyer_modifications,
+            evaluated_at=eval_time,
+        )
+        db.add(history_entry)
+
+        db.commit()
+        db.refresh(recommendation)
+        return recommendation
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.get(
+    "/{recommendation_id}/history",
+    response_model=List[EvaluationHistoryResponse],
+)
+def get_recommendation_history(
+    recommendation_id: int,
+    db: Session = Depends(get_db),
+):
+    """Returns chronological evaluation history for a recommendation."""
+    rec = db.query(PurchaseRecommendation).filter_by(id=recommendation_id).first()
+    if not rec:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Purchase recommendation not found",
+        )
+
+    return (
+        db.query(EvaluationHistory)
+        .filter_by(recommendation_id=recommendation_id)
+        .order_by(EvaluationHistory.evaluation_sequence.asc())
+        .all()
+    )
 

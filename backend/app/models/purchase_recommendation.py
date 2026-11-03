@@ -65,6 +65,12 @@ class PurchaseRecommendation(Base):
         back_populates="agent_evaluations",
     )
     purchase_orders = relationship("PurchaseOrder", back_populates="recommendation")
+    evaluation_history = relationship(
+        "EvaluationHistory",
+        back_populates="recommendation",
+        cascade="all, delete-orphan",
+        order_by="EvaluationHistory.evaluation_sequence.asc()",
+    )
 
     @property
     def product_name(self) -> Optional[str]:

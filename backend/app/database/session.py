@@ -1,9 +1,18 @@
 import os
+from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./purchasing_agent.db")
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+DEFAULT_DB_FILE = (ROOT_DIR / "purchasing_agent.db").resolve()
+
+# Anchor SQLite database path to project root so working directory changes don't cause table-missing errors
+raw_url = os.getenv("DATABASE_URL")
+if not raw_url or raw_url == "sqlite:///./purchasing_agent.db":
+    DATABASE_URL = f"sqlite:///{DEFAULT_DB_FILE.as_posix()}"
+else:
+    DATABASE_URL = raw_url
 
 # Enable SQLite foreign key constraint enforcement
 @event.listens_for(Engine, "connect")
@@ -47,6 +56,7 @@ def init_db(engine_override=None):
     import app.models.supplier  # noqa: F401
     import app.models.supplier_product  # noqa: F401
     import app.models.purchase_recommendation  # noqa: F401
+    import app.models.evaluation_history  # noqa: F401
     import app.models.purchase_order  # noqa: F401
     import app.models.purchasing_budget  # noqa: F401
 
