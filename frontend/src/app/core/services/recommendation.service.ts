@@ -8,6 +8,7 @@ import {
   ProductLookup,
   SupplierLookup,
   EvaluationPayload,
+  EvaluationHistoryItem,
 } from '../models/recommendation.model';
 
 @Injectable({
@@ -44,6 +45,10 @@ export class RecommendationService {
 
   evaluateCustom(id: number, payload: EvaluationPayload): Observable<RecommendationResponse> {
     return this.http.post<RecommendationResponse>(`${this.baseUrl}/${id}/evaluate`, payload);
+  }
+
+  getHistory(id: number): Observable<EvaluationHistoryItem[]> {
+    return this.http.get<EvaluationHistoryItem[]>(`${this.baseUrl}/${id}/history`);
   }
 
   getProducts(): Observable<ProductLookup[]> {

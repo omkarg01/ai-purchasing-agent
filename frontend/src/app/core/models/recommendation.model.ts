@@ -52,3 +52,31 @@ export interface EvaluationPayload {
   agent_reasoning?: string | null;
   evaluated_at?: string | null;
 }
+
+export interface ValueChange<T = any> {
+  previous: T;
+  updated: T;
+  previous_name?: string | null;
+  updated_name?: string | null;
+}
+
+export interface BuyerModifications {
+  quantity?: ValueChange<number>;
+  supplier?: ValueChange<number>;
+}
+
+export interface EvaluationHistoryItem {
+  id: number;
+  recommendation_id: number;
+  evaluation_sequence: number;
+  evaluated_quantity: number;
+  evaluated_supplier_id?: number | null;
+  evaluated_supplier_name?: string | null;
+  agent_decision: AgentDecision;
+  explanation?: string | null;
+  calculations?: Record<string, any> | null;
+  risks?: string[] | null;
+  warnings?: string[] | null;
+  buyer_modifications?: BuyerModifications | null;
+  evaluated_at: string;
+}

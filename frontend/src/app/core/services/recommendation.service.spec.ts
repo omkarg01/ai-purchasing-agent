@@ -6,6 +6,7 @@ import {
   RecommendationResponse,
   ProductLookup,
   SupplierLookup,
+  EvaluationHistoryItem,
 } from '../models/recommendation.model';
 
 describe('RecommendationService', () => {
@@ -64,39 +65,44 @@ describe('RecommendationService', () => {
     req.flush(mockRecommendation);
   });
 
-  it('should create recommendation', () => {
-    service.create({
+  it('should create a recommendation', () => {
+    const payload = {
       product_id: 101,
       supplier_id: 5,
       recommended_quantity: 200,
       requested_delivery_date: '2026-11-10',
-    }).subscribe((data) => {
+    };
+
+    service.create(payload).subscribe((data) => {
       expect(data.id).toBe(1);
     });
 
     const req = httpTesting.expectOne('/api/recommendations');
     expect(req.request.method).toBe('POST');
-    expect(req.request.body.recommended_quantity).toBe(200);
+    expect(req.request.body).toEqual(payload);
     req.flush(mockRecommendation);
   });
 
-  it('should update recommendation', () => {
-    const updated = { ...mockRecommendation, recommended_quantity: 350 };
-    service.update(1, { recommended_quantity: 350 }).subscribe((data) => {
-      expect(data.recommended_quantity).toBe(350);
+  it('should update a recommendation', () => {
+    const payload = {
+      recommended_quantity: 250,
+    };
+
+    service.update(1, payload).subscribe((data) => {
+      expect(data.id).toBe(1);
     });
 
     const req = httpTesting.expectOne('/api/recommendations/1');
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body.recommended_quantity).toBe(350);
-    req.flush(updated);
+    expect(req.request.body).toEqual(payload);
+    req.flush({ ...mockRecommendation, recommended_quantity: 250 });
   });
 
   it('should fetch product catalog', () => {
-    const mockProducts: ProductLookup[] = [{ id: 1, name: 'Widget A', sku: 'SKU-01' }];
+    const mockProducts: ProductLookup[] = [{ id: 1, name: 'Widget', sku: 'WDG-1' }];
     service.getProducts().subscribe((data) => {
       expect(data.length).toBe(1);
-      expect(data[0].sku).toBe('SKU-01');
+      expect(data[0].name).toBe('Widget');
     });
 
     const req = httpTesting.expectOne('/api/catalog/products');
@@ -135,5 +141,31 @@ describe('RecommendationService', () => {
     const req = httpTesting.expectOne('/api/recommendations/1/approve');
     expect(req.request.method).toBe('POST');
     req.flush(approved);
+  });
+
+  it('should fetch evaluation history', () => {
+    const mockHistory: EvaluationHistoryItem[] = [
+      {
+        id: 1,
+        recommendation_id: 1,
+        evaluation_sequence: 1,
+        evaluated_quantity: 200,
+        evaluated_supplier_id: 5,
+        evaluated_supplier_name: 'Acme Corp',
+        agent_decision: 'ACCEPT',
+        explanation: 'Feasible',
+        evaluated_at: '2026-11-03T00:00:00Z',
+      },
+    ];
+
+    service.getHistory(1).subscribe((data) => {
+      expect(data.length).toBe(1);
+      expect(data[0].evaluation_sequence).toBe(1);
+      expect(data[0].evaluated_supplier_name).toBe('Acme Corp');
+    });
+
+    const req = httpTesting.expectOne('/api/recommendations/1/history');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockHistory);
   });
 });

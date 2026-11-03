@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 import { vi } from 'vitest';
 import { RecommendationDetailComponent } from './recommendation-detail.component';
 import { RecommendationService } from '../../core/services/recommendation.service';
-import { RecommendationResponse } from '../../core/models/recommendation.model';
+import { EvaluationHistoryItem, RecommendationResponse } from '../../core/models/recommendation.model';
 
 describe('RecommendationDetailComponent', () => {
   let component: RecommendationDetailComponent;
@@ -39,14 +39,30 @@ describe('RecommendationDetailComponent', () => {
     status: 'APPROVED',
   };
 
+  const mockHistory: EvaluationHistoryItem[] = [
+    {
+      id: 1,
+      recommendation_id: 1,
+      evaluation_sequence: 1,
+      evaluated_quantity: 200,
+      evaluated_supplier_id: 2,
+      evaluated_supplier_name: 'Acme Corp',
+      agent_decision: 'MODIFY',
+      explanation: 'Modify order to 150 units.',
+      evaluated_at: '2026-11-03T00:00:00Z',
+    },
+  ];
+
   const mockService = {
     getById: vi.fn(),
     runEvaluation: vi.fn(),
     approve: vi.fn(),
+    getHistory: vi.fn(),
   };
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    mockService.getHistory.mockReturnValue(of([]));
 
     await TestBed.configureTestingModule({
       imports: [RecommendationDetailComponent],
@@ -67,20 +83,24 @@ describe('RecommendationDetailComponent', () => {
     }).compileComponents();
   });
 
-  it('should load recommendation on init', () => {
+  it('should load recommendation and history on init', () => {
     mockService.getById.mockReturnValue(of(initialRec));
+    mockService.getHistory.mockReturnValue(of(mockHistory));
 
     fixture = TestBed.createComponent(RecommendationDetailComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
 
     expect(component.recommendation()?.id).toBe(1);
-    expect(component.canApprove()).toBe(true);
+    expect(mockService.getHistory).toHaveBeenCalledWith(1);
+    expect(component.history().length).toBe(1);
+    expect(component.history()[0].evaluation_sequence).toBe(1);
   });
 
-  it('should run evaluation and update recommendation details', () => {
+  it('should run evaluation and refresh history', () => {
     mockService.getById.mockReturnValue(of(initialRec));
     mockService.runEvaluation.mockReturnValue(of(evaluatedRec));
+    mockService.getHistory.mockReturnValue(of(mockHistory));
 
     fixture = TestBed.createComponent(RecommendationDetailComponent);
     component = fixture.componentInstance;
@@ -89,6 +109,7 @@ describe('RecommendationDetailComponent', () => {
     component.onRunEvaluation();
 
     expect(mockService.runEvaluation).toHaveBeenCalledWith(1);
+    expect(mockService.getHistory).toHaveBeenCalledWith(1);
     expect(component.recommendation()?.agent_decision).toBe('MODIFY');
     expect(component.isQuantityModified()).toBe(true);
     expect(component.isSupplierModified()).toBe(true);
@@ -110,5 +131,24 @@ describe('RecommendationDetailComponent', () => {
     expect(mockService.approve).toHaveBeenCalledWith(1);
     expect(component.recommendation()?.status).toBe('APPROVED');
     expect(component.canApprove()).toBe(false);
+  });
+
+  it('should correctly detect buyer modifications in history item', () => {
+    const itemWithoutMods: EvaluationHistoryItem = {
+      ...mockHistory[0],
+      buyer_modifications: null,
+    };
+    const itemWithMods: EvaluationHistoryItem = {
+      ...mockHistory[0],
+      buyer_modifications: {
+        quantity: { previous: 200, updated: 150 },
+      },
+    };
+
+    fixture = TestBed.createComponent(RecommendationDetailComponent);
+    component = fixture.componentInstance;
+
+    expect(component.hasBuyerModifications(itemWithoutMods)).toBe(false);
+    expect(component.hasBuyerModifications(itemWithMods)).toBe(true);
   });
 });

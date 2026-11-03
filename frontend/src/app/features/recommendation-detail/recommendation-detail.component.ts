@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { RecommendationService } from '../../core/services/recommendation.service';
-import { RecommendationResponse } from '../../core/models/recommendation.model';
+import { EvaluationHistoryItem, RecommendationResponse } from '../../core/models/recommendation.model';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 
 @Component({
@@ -241,6 +241,96 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                   </button>
                 </div>
               </ng-template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Evaluation History & Buyer Feedback Loop Section -->
+        <div class="history-panel">
+          <div class="panel-header">
+            <div class="history-title-row">
+              <h3 class="panel-title">Evaluation History</h3>
+              <span class="panel-tag">{{ history().length }} {{ history().length === 1 ? 'Run' : 'Runs' }} Recorded</span>
+            </div>
+            <button
+              class="btn-toggle-history"
+              (click)="toggleHistory()"
+              type="button"
+            >
+              {{ showHistory() ? 'Hide History' : 'View History' }}
+            </button>
+          </div>
+
+          <div *ngIf="showHistory()" class="panel-body">
+            <!-- Loading State -->
+            <div *ngIf="loadingHistory() && history().length === 0" class="history-empty">
+              <div class="spinner-sm"></div>
+              <p>Loading evaluation history...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div *ngIf="!loadingHistory() && history().length === 0" class="history-empty">
+              <p class="text-muted">No evaluations recorded yet. Run an AI evaluation to start tracking the decision history.</p>
+            </div>
+
+            <!-- History Timeline / List -->
+            <div *ngIf="history().length > 0" class="history-timeline">
+              <div
+                *ngFor="let item of history()"
+                class="history-card"
+                [class.latest-card]="item.evaluation_sequence === latestSequence()"
+              >
+                <!-- Card Header -->
+                <div class="history-card-header">
+                  <div class="history-meta">
+                    <span class="history-badge-num">Evaluation #{{ item.evaluation_sequence }}</span>
+                    <span *ngIf="item.evaluation_sequence === latestSequence()" class="badge-latest">Latest Evaluation</span>
+                    <span class="history-date">{{ formatTimestamp(item.evaluated_at) }}</span>
+                  </div>
+                  <app-status-badge [value]="item.agent_decision" type="decision"></app-status-badge>
+                </div>
+
+                <!-- Buyer Modifications Callout -->
+                <div *ngIf="hasBuyerModifications(item)" class="buyer-diff-callout">
+                  <div class="diff-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="diff-icon">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                    Buyer Changes Since Previous Evaluation:
+                  </div>
+                  <div class="diff-items">
+                    <div *ngIf="item.buyer_modifications?.quantity" class="diff-pill">
+                      Quantity: <span class="diff-prev">{{ item.buyer_modifications?.quantity?.previous }}</span> &rarr; <span class="diff-curr">{{ item.buyer_modifications?.quantity?.updated }} units</span>
+                    </div>
+                    <div *ngIf="item.buyer_modifications?.supplier" class="diff-pill">
+                      Supplier: <span class="diff-prev">{{ item.buyer_modifications?.supplier?.previous_name || ('#' + item.buyer_modifications?.supplier?.previous) }}</span> &rarr; <span class="diff-curr">{{ item.buyer_modifications?.supplier?.updated_name || ('#' + item.buyer_modifications?.supplier?.updated) }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Evaluated Parameters Snapshot -->
+                <div class="history-params-grid">
+                  <div class="param-cell">
+                    <span class="cell-label">Evaluated Quantity</span>
+                    <span class="cell-val">{{ item.evaluated_quantity }} units</span>
+                  </div>
+                  <div class="param-cell">
+                    <span class="cell-label">Evaluated Supplier</span>
+                    <span class="cell-val">{{ item.evaluated_supplier_name || (item.evaluated_supplier_id ? 'Supplier #' + item.evaluated_supplier_id : 'None') }}</span>
+                  </div>
+                  <div class="param-cell">
+                    <span class="cell-label">Decision Status</span>
+                    <span class="cell-val font-semibold">{{ item.agent_decision }}</span>
+                  </div>
+                </div>
+
+                <!-- Explanation / Briefing -->
+                <div *ngIf="item.explanation" class="history-explanation">
+                  <span class="explanation-title">Reasoning / Intelligence Briefing:</span>
+                  <div class="explanation-content">{{ item.explanation }}</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -677,6 +767,182 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       gap: 1rem;
       color: #64748b;
     }
+
+    /* Evaluation History Styles */
+    .history-panel {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+    .history-title-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .btn-toggle-history {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #334155;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-toggle-history:hover {
+      background: #f8fafc;
+      border-color: #94a3b8;
+    }
+    .history-empty {
+      padding: 2rem;
+      text-align: center;
+      color: #64748b;
+    }
+    .history-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .history-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1.25rem;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+      transition: border-color 0.15s ease;
+    }
+    .history-card.latest-card {
+      border-color: #3b82f6;
+      background: #ffffff;
+      box-shadow: 0 0 0 1px #3b82f6;
+    }
+    .history-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .history-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      flex-wrap: wrap;
+    }
+    .history-badge-num {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 1rem;
+    }
+    .badge-latest {
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+    }
+    .history-date {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+    .buyer-diff-callout {
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 6px;
+      padding: 0.75rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .diff-header {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #854d0e;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .diff-icon {
+      width: 14px;
+      height: 14px;
+    }
+    .diff-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .diff-pill {
+      font-size: 0.85rem;
+      color: #713f12;
+      background: #ffffff;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid #fef08a;
+    }
+    .diff-prev {
+      text-decoration: line-through;
+      color: #94a3b8;
+    }
+    .diff-curr {
+      font-weight: 600;
+      color: #15803d;
+    }
+    .history-params-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 0.75rem;
+      background: #ffffff;
+      border: 1px solid #f1f5f9;
+      padding: 0.75rem;
+      border-radius: 6px;
+    }
+    .param-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .cell-label {
+      font-size: 0.75rem;
+      color: #64748b;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .cell-val {
+      font-size: 0.9rem;
+      color: #1e293b;
+      font-weight: 500;
+    }
+    .history-explanation {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      background: #ffffff;
+      border: 1px solid #f1f5f9;
+      border-radius: 6px;
+      padding: 0.85rem;
+    }
+    .explanation-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+    .explanation-content {
+      font-size: 0.9rem;
+      color: #334155;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
   `]
 })
 export class RecommendationDetailComponent implements OnInit {
@@ -684,11 +950,19 @@ export class RecommendationDetailComponent implements OnInit {
   private readonly recommendationService = inject(RecommendationService);
 
   readonly recommendation = signal<RecommendationResponse | null>(null);
+  readonly history = signal<EvaluationHistoryItem[]>([]);
   readonly loading = signal<boolean>(false);
+  readonly loadingHistory = signal<boolean>(false);
   readonly evaluating = signal<boolean>(false);
   readonly approving = signal<boolean>(false);
+  readonly showHistory = signal<boolean>(true);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
+
+  readonly latestSequence = computed(() => {
+    const h = this.history();
+    return h.length > 0 ? Math.max(...h.map(i => i.evaluation_sequence)) : 0;
+  });
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
@@ -707,12 +981,35 @@ export class RecommendationDetailComponent implements OnInit {
       next: (data) => {
         this.recommendation.set(data);
         this.loading.set(false);
+        this.loadHistory(id);
       },
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set(err.error?.detail || err.message || 'Failed to load recommendation.');
       }
     });
+  }
+
+  loadHistory(id: number): void {
+    this.loadingHistory.set(true);
+    this.recommendationService.getHistory(id).subscribe({
+      next: (items) => {
+        this.history.set(items);
+        this.loadingHistory.set(false);
+      },
+      error: (err) => {
+        this.loadingHistory.set(false);
+        console.error('Failed to load evaluation history:', err);
+      }
+    });
+  }
+
+  hasBuyerModifications(item: EvaluationHistoryItem): boolean {
+    return !!(item.buyer_modifications?.quantity || item.buyer_modifications?.supplier);
+  }
+
+  toggleHistory(): void {
+    this.showHistory.update(v => !v);
   }
 
   onRunEvaluation(): void {
@@ -727,6 +1024,7 @@ export class RecommendationDetailComponent implements OnInit {
       next: (updated) => {
         this.recommendation.set(updated);
         this.evaluating.set(false);
+        this.loadHistory(updated.id);
         this.successMessage.set(
           `AI Evaluation completed: Decision is ${updated.agent_decision}.`
         );
