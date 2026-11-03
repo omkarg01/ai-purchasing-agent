@@ -104,6 +104,7 @@ purchasing-agent/
 │   ├── architecture.md                     # System architecture & layer specifications
 │   ├── database-architecture-and-invariants.md # SQLite schema & persistence invariants
 │   ├── evaluation-approach.md              # Quality evaluation methodology & scenario proofs
+│   ├── failure-modes-and-roadmap.md        # System risks, failure modes & strategic roadmap
 │   └── thinking-document.md                # System design & thought process
 ├── .env.example                            # Template environment configuration
 └── README.md                               # Project documentation & runbook
@@ -317,4 +318,5 @@ npm run build
 - [`docs/architecture.md`](docs/architecture.md): Complete system architecture, layer descriptions, Mermaid flowcharts, and sequence diagrams.
 - [`docs/database-architecture-and-invariants.md`](docs/database-architecture-and-invariants.md): SQLite configuration, SQLAlchemy relational models, and transactional invariants.
 - [`docs/evaluation-approach.md`](docs/evaluation-approach.md): Evaluation methodology, mathematical proof of scenarios EV-001 through EV-008, and limitation analysis.
+- [`docs/failure-modes-and-roadmap.md`](docs/failure-modes-and-roadmap.md): Critical failure modes, hardcoded constraints vs flexible designs, and phased enhancement roadmap.
 - [`docs/thinking-document.md`](docs/thinking-document.md): Conceptual design thinking and rationale.
