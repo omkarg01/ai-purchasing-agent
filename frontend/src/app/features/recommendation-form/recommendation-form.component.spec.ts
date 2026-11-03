@@ -100,5 +100,41 @@ describe('RecommendationFormComponent', () => {
     });
     expect(router.navigate).toHaveBeenCalledWith(['/recommendations', 10]);
   });
+
+  it('should submit multi-vendor split allocation when split sourcing is enabled', () => {
+    mockService.create.mockReturnValue(of(mockCreated));
+
+    fixture = TestBed.createComponent(RecommendationFormComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.formData.productId = 1;
+    component.formData.quantity = 500;
+    component.formData.deliveryDate = '2026-11-20';
+
+    // Enable split and configure split data
+    component.isSplitEnabled.set(true);
+    component.splitData.primarySupplierId = 1;
+    component.splitData.primaryQuantity = 250;
+    component.splitData.secondarySupplierId = 2;
+    component.splitData.secondaryQuantity = 250;
+
+    expect(component.isSplitValid()).toBe(true);
+
+    component.onSubmit();
+
+    expect(mockService.create).toHaveBeenCalledWith({
+      product_id: 1,
+      supplier_id: 1,
+      recommended_quantity: 500,
+      requested_delivery_date: '2026-11-20',
+      split_allocation: {
+        primary_supplier_id: 1,
+        primary_quantity: 250,
+        secondary_supplier_id: 2,
+        secondary_quantity: 250,
+      },
+    });
+  });
 });
 

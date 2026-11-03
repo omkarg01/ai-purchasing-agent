@@ -38,6 +38,80 @@ from app.agent.purchasing_agent import generate_purchasing_briefing
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
 
+def validate_and_format_split_allocation(
+    product_id: int, total_qty: int, split_data: dict, db: Session
+) -> dict:
+    """Validates multi-supplier split sourcing allocation against catalog data."""
+    primary_id = split_data.get("primary_supplier_id")
+    primary_qty = int(split_data.get("primary_quantity", 0))
+    secondary_id = split_data.get("secondary_supplier_id")
+    secondary_qty = int(split_data.get("secondary_quantity", 0))
+
+    if not primary_id or not secondary_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Split sourcing requires both primary and secondary supplier IDs.",
+        )
+    if primary_id == secondary_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Primary and secondary suppliers in split sourcing must be different.",
+        )
+    if primary_qty <= 0 or secondary_qty <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Split allocation quantities must be greater than zero.",
+        )
+    if (primary_qty + secondary_qty) != total_qty:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Sum of split quantities ({primary_qty} + {secondary_qty} = {primary_qty + secondary_qty}) "
+                f"must equal total quantity ({total_qty})."
+            ),
+        )
+
+    sp_primary = (
+        db.query(SupplierProduct)
+        .filter_by(supplier_id=primary_id, product_id=product_id)
+        .first()
+    )
+    if not sp_primary:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Supplier #{primary_id} is not registered for product #{product_id}.",
+        )
+    sp_secondary = (
+        db.query(SupplierProduct)
+        .filter_by(supplier_id=secondary_id, product_id=product_id)
+        .first()
+    )
+    if not sp_secondary:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Supplier #{secondary_id} is not registered for product #{product_id}.",
+        )
+
+    p_price = float(sp_primary.unit_price)
+    s_price = float(sp_secondary.unit_price)
+    p_cost = round(primary_qty * p_price, 2)
+    s_cost = round(secondary_qty * s_price, 2)
+
+    return {
+        "primary_supplier_id": primary_id,
+        "primary_supplier_name": sp_primary.supplier.supplier_name,
+        "primary_quantity": primary_qty,
+        "primary_unit_price": p_price,
+        "primary_cost": p_cost,
+        "secondary_supplier_id": secondary_id,
+        "secondary_supplier_name": sp_secondary.supplier.supplier_name,
+        "secondary_quantity": secondary_qty,
+        "secondary_unit_price": s_price,
+        "secondary_cost": s_cost,
+        "total_cost": round(p_cost + s_cost, 2),
+    }
+
+
 @router.get("", response_model=List[RecommendationResponse])
 def list_recommendations(
     db: Session = Depends(get_db),
@@ -99,11 +173,20 @@ def create_recommendation(
             detail="Requested delivery date cannot be in the past",
         )
 
+    split_alloc = None
+    if payload.split_allocation:
+        split_alloc = validate_and_format_split_allocation(
+            payload.product_id, payload.recommended_quantity, payload.split_allocation, db
+        )
+        if payload.supplier_id is None:
+            payload.supplier_id = split_alloc["primary_supplier_id"]
+
     new_rec = PurchaseRecommendation(
         product_id=payload.product_id,
         supplier_id=payload.supplier_id,
         recommended_quantity=payload.recommended_quantity,
         requested_delivery_date=payload.requested_delivery_date,
+        split_allocation=split_alloc,
         status="PENDING_APPROVAL",
     )
     db.add(new_rec)
@@ -163,6 +246,15 @@ def update_recommendation(
                 detail="Requested delivery date cannot be in the past",
             )
         rec.requested_delivery_date = payload.requested_delivery_date
+
+    target_qty = payload.recommended_quantity if payload.recommended_quantity is not None else rec.recommended_quantity
+    if payload.split_allocation:
+        rec.split_allocation = validate_and_format_split_allocation(
+            rec.product_id, target_qty, payload.split_allocation, db
+        )
+        rec.supplier_id = rec.split_allocation["primary_supplier_id"]
+    elif "split_allocation" in payload.model_fields_set and payload.split_allocation is None:
+        rec.split_allocation = None
 
     # Reset previous AI evaluation because parameters changed
     rec.agent_decision = None
@@ -277,7 +369,9 @@ def approve_recommendation(
 
     # Governance threshold validation (Rule / FM-7)
     order_val = None
-    if recommendation.supplier_id:
+    if recommendation.split_allocation:
+        order_val = float(recommendation.split_allocation.get("total_cost", 0.0))
+    elif recommendation.supplier_id:
         sp = db.query(SupplierProduct).filter_by(
             supplier_id=recommendation.supplier_id,
             product_id=recommendation.product_id,
@@ -296,6 +390,47 @@ def approve_recommendation(
         )
 
     recommendation.status = "APPROVED"
+
+    # Create PurchaseOrder records upon approval
+    if recommendation.split_allocation:
+        alloc = recommendation.split_allocation
+        p_price = Decimal(str(alloc.get("primary_unit_price", 0.0)))
+        s_price = Decimal(str(alloc.get("secondary_unit_price", 0.0)))
+        po1 = PurchaseOrder(
+            product_id=recommendation.product_id,
+            supplier_id=alloc["primary_supplier_id"],
+            recommendation_id=recommendation.id,
+            quantity=alloc["primary_quantity"],
+            unit_price=p_price,
+            expected_delivery_date=recommendation.requested_delivery_date,
+            status="OPEN",
+        )
+        po2 = PurchaseOrder(
+            product_id=recommendation.product_id,
+            supplier_id=alloc["secondary_supplier_id"],
+            recommendation_id=recommendation.id,
+            quantity=alloc["secondary_quantity"],
+            unit_price=s_price,
+            expected_delivery_date=recommendation.requested_delivery_date,
+            status="OPEN",
+        )
+        db.add_all([po1, po2])
+    elif recommendation.supplier_id:
+        sp = db.query(SupplierProduct).filter_by(
+            supplier_id=recommendation.supplier_id,
+            product_id=recommendation.product_id,
+        ).first()
+        if sp:
+            po = PurchaseOrder(
+                product_id=recommendation.product_id,
+                supplier_id=recommendation.supplier_id,
+                recommendation_id=recommendation.id,
+                quantity=recommendation.recommended_quantity,
+                unit_price=sp.unit_price,
+                expected_delivery_date=recommendation.requested_delivery_date,
+                status="OPEN",
+            )
+            db.add(po)
 
     db.commit()
     db.refresh(recommendation)
@@ -459,6 +594,12 @@ def run_evaluation_with_engine(
                 "previous_name": previous_run.evaluated_supplier_name,
                 "updated_name": recommendation.supplier_name,
             }
+        prev_split = (previous_run.calculations or {}).get("split_allocation") if previous_run.calculations else None
+        if recommendation.split_allocation != prev_split:
+            mods["split_allocation"] = {
+                "previous": prev_split,
+                "updated": recommendation.split_allocation,
+            }
         buyer_modifications = mods if mods else None
 
     # 2. Atomic persistence: update recommendation & insert EvaluationHistory in one transaction
@@ -470,6 +611,10 @@ def run_evaluation_with_engine(
         eval_time = datetime.now(timezone.utc)
         recommendation.evaluated_at = eval_time
         recommendation.status = "PENDING_APPROVAL"
+
+        # If decision engine determined split sourcing, assign to recommendation.split_allocation
+        if decision_result.preferred_option and decision_result.preferred_option.is_split_sourcing:
+            recommendation.split_allocation = decision_result.calculations.get("split_allocation")
 
         # Protect original fields
         assert recommendation.recommended_quantity == original_recommended_quantity

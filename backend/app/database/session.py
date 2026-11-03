@@ -73,3 +73,12 @@ def init_db(engine_override=None):
                 conn.commit()
         except Exception:
             pass
+
+        try:
+            res = conn.execute(text("PRAGMA table_info(purchase_recommendations)"))
+            existing_rec_cols = {row[1] for row in res.fetchall()}
+            if existing_rec_cols and "split_allocation" not in existing_rec_cols:
+                conn.execute(text("ALTER TABLE purchase_recommendations ADD COLUMN split_allocation TEXT NULL"))
+                conn.commit()
+        except Exception:
+            pass

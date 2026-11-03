@@ -1,9 +1,9 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { RecommendationService } from '../../core/services/recommendation.service';
-import { ProductLookup, SupplierLookup, RecommendationResponse } from '../../core/models/recommendation.model';
+import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation } from '../../core/models/recommendation.model';
 
 @Component({
   selector: 'app-recommendation-form',
@@ -75,8 +75,8 @@ import { ProductLookup, SupplierLookup, RecommendationResponse } from '../../cor
             </span>
           </div>
 
-          <!-- Supplier Selection -->
-          <div class="form-group">
+          <!-- Single Supplier Selection (When split is disabled) -->
+          <div *ngIf="!isSplitEnabled()" class="form-group">
             <label for="supplierId" class="form-label">
               Target Supplier
             </label>
@@ -95,6 +95,105 @@ import { ProductLookup, SupplierLookup, RecommendationResponse } from '../../cor
             <span class="field-hint">
               Optional. The decision engine will verify if this supplier is optimal or suggest an alternative.
             </span>
+          </div>
+
+          <!-- Multi-Vendor Split Sourcing Toggle -->
+          <div class="split-toggle-card">
+            <label class="toggle-checkbox-label">
+              <input
+                type="checkbox"
+                [checked]="isSplitEnabled()"
+                (change)="toggleSplit()"
+                [disabled]="isApproved()"
+              />
+              <span class="toggle-title">🔀 Enable Multi-Vendor Split Sourcing (Scenario 2 / Rule 3)</span>
+            </label>
+            <span class="field-hint">
+              Split the required quantity across two qualified suppliers to mitigate capacity caps or lead time delays.
+            </span>
+          </div>
+
+          <!-- Split Sourcing Vendor Rows (When split is enabled) -->
+          <div *ngIf="isSplitEnabled()" class="split-controls-panel">
+            <div class="split-controls-header">
+              <span class="split-controls-title">Multi-Supplier Allocation Breakdown</span>
+              <span class="split-balance-pill" [class.balance-match]="isSplitQuantityMatched()" [class.balance-mismatch]="!isSplitQuantityMatched()">
+                Allocated: {{ splitTotalQuantity() }} / {{ formData.quantity || 0 }} units
+              </span>
+            </div>
+
+            <!-- Primary Supplier Row -->
+            <div class="split-row">
+              <div class="form-group flex-1">
+                <label class="form-label">Primary Vendor <span class="required">*</span></label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="splitData.primarySupplierId"
+                  name="primarySupplierId"
+                  required
+                  [disabled]="isApproved()"
+                >
+                  <option [ngValue]="null" disabled>Select primary vendor...</option>
+                  <option *ngFor="let supp of suppliers()" [ngValue]="supp.id">
+                    {{ supp.supplier_name }} (ID #{{ supp.id }})
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group flex-qty">
+                <label class="form-label">Units <span class="required">*</span></label>
+                <input
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="splitData.primaryQuantity"
+                  name="primaryQuantity"
+                  required
+                  min="1"
+                  placeholder="e.g. 250"
+                  [disabled]="isApproved()"
+                />
+              </div>
+            </div>
+
+            <!-- Secondary Supplier Row -->
+            <div class="split-row">
+              <div class="form-group flex-1">
+                <label class="form-label">Secondary Vendor <span class="required">*</span></label>
+                <select
+                  class="form-control"
+                  [(ngModel)]="splitData.secondarySupplierId"
+                  name="secondarySupplierId"
+                  required
+                  [disabled]="isApproved()"
+                >
+                  <option [ngValue]="null" disabled>Select secondary vendor...</option>
+                  <option *ngFor="let supp of suppliers()" [ngValue]="supp.id">
+                    {{ supp.supplier_name }} (ID #{{ supp.id }})
+                  </option>
+                </select>
+              </div>
+
+              <div class="form-group flex-qty">
+                <label class="form-label">Units <span class="required">*</span></label>
+                <input
+                  type="number"
+                  class="form-control"
+                  [(ngModel)]="splitData.secondaryQuantity"
+                  name="secondaryQuantity"
+                  required
+                  min="1"
+                  placeholder="e.g. 250"
+                  [disabled]="isApproved()"
+                />
+              </div>
+            </div>
+
+            <div *ngIf="!isSplitQuantityMatched()" class="split-warning-banner">
+              ⚠️ Sum of split units ({{ splitTotalQuantity() }}) must equal recommended quantity ({{ formData.quantity || 0 }}).
+            </div>
+            <div *ngIf="splitData.primarySupplierId && splitData.secondarySupplierId && splitData.primarySupplierId === splitData.secondarySupplierId" class="split-warning-banner">
+              ⚠️ Primary and secondary vendors must be different companies.
+            </div>
           </div>
 
           <!-- Recommended Quantity -->
@@ -137,7 +236,7 @@ import { ProductLookup, SupplierLookup, RecommendationResponse } from '../../cor
             <button
               type="submit"
               class="btn btn-primary"
-              [disabled]="submitting() || !recForm.valid || isApproved()"
+              [disabled]="submitting() || !recForm.valid || (isSplitEnabled() && !isSplitValid()) || isApproved()"
             >
               <span *ngIf="submitting()" class="spinner-sm"></span>
               {{ submitting() ? 'Saving...' : (isEditMode() ? 'Save Changes' : 'Create Recommendation') }}
@@ -251,6 +350,88 @@ import { ProductLookup, SupplierLookup, RecommendationResponse } from '../../cor
       font-size: 0.75rem;
       color: #64748b;
     }
+
+    /* Split Sourcing Form Styles */
+    .split-toggle-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .toggle-checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      cursor: pointer;
+    }
+    .toggle-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #1e293b;
+    }
+    .split-controls-panel {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .split-controls-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px dashed #86efac;
+    }
+    .split-controls-title {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #166534;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .split-balance-pill {
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+    }
+    .balance-match {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #86efac;
+    }
+    .balance-mismatch {
+      background: #fef2f2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+    }
+    .split-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+    .flex-1 {
+      flex: 1;
+    }
+    .flex-qty {
+      width: 140px;
+    }
+    .split-warning-banner {
+      font-size: 0.8rem;
+      color: #b45309;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+    }
     .form-actions {
       display: flex;
       align-items: center;
@@ -355,6 +536,14 @@ export class RecommendationFormComponent implements OnInit {
   readonly submitting = signal<boolean>(false);
   readonly errorMessage = signal<string | null>(null);
 
+  readonly isSplitEnabled = signal<boolean>(false);
+  splitData = {
+    primarySupplierId: null as number | null,
+    primaryQuantity: null as number | null,
+    secondarySupplierId: null as number | null,
+    secondaryQuantity: null as number | null,
+  };
+
   readonly todayDate = new Date().toISOString().split('T')[0];
 
   formData = {
@@ -398,6 +587,15 @@ export class RecommendationFormComponent implements OnInit {
           this.formData.supplierId = rec.supplier_id;
           this.formData.quantity = rec.recommended_quantity;
           this.formData.deliveryDate = rec.requested_delivery_date;
+
+          if (rec.split_allocation) {
+            this.isSplitEnabled.set(true);
+            this.splitData.primarySupplierId = rec.split_allocation.primary_supplier_id;
+            this.splitData.primaryQuantity = rec.split_allocation.primary_quantity;
+            this.splitData.secondarySupplierId = rec.split_allocation.secondary_supplier_id;
+            this.splitData.secondaryQuantity = rec.split_allocation.secondary_quantity;
+          }
+
           this.loadingData.set(false);
         },
         error: (err) => {
@@ -414,6 +612,39 @@ export class RecommendationFormComponent implements OnInit {
     }
   }
 
+  splitTotalQuantity(): number {
+    return (this.splitData.primaryQuantity || 0) + (this.splitData.secondaryQuantity || 0);
+  }
+
+  isSplitQuantityMatched(): boolean {
+    return this.splitTotalQuantity() === (this.formData.quantity || 0);
+  }
+
+  isSplitValid(): boolean {
+    if (!this.isSplitEnabled()) return true;
+    const matched = this.isSplitQuantityMatched();
+    const pId = this.splitData.primarySupplierId;
+    const sId = this.splitData.secondarySupplierId;
+    const pQty = this.splitData.primaryQuantity;
+    const sQty = this.splitData.secondaryQuantity;
+    return matched && !!pId && !!sId && pId !== sId && (pQty ?? 0) > 0 && (sQty ?? 0) > 0;
+  }
+
+  toggleSplit(): void {
+    const next = !this.isSplitEnabled();
+    this.isSplitEnabled.set(next);
+    if (next && !this.splitData.primarySupplierId) {
+      this.splitData.primarySupplierId = this.formData.supplierId || (this.suppliers()[0]?.id ?? null);
+      const half = Math.floor((this.formData.quantity || 0) / 2);
+      this.splitData.primaryQuantity = half;
+      this.splitData.secondaryQuantity = (this.formData.quantity || 0) - half;
+      if (this.suppliers().length > 1) {
+        const alt = this.suppliers().find(s => s.id !== this.splitData.primarySupplierId);
+        this.splitData.secondarySupplierId = alt?.id ?? null;
+      }
+    }
+  }
+
   isApproved(): boolean {
     return this.existingRecommendation()?.status === 'APPROVED';
   }
@@ -424,15 +655,40 @@ export class RecommendationFormComponent implements OnInit {
       return;
     }
 
+    let split_alloc: SplitAllocation | null = null;
+    if (this.isSplitEnabled()) {
+      if (!this.isSplitValid()) {
+        this.errorMessage.set('Please resolve split sourcing allocation issues before saving.');
+        return;
+      }
+      split_alloc = {
+        primary_supplier_id: this.splitData.primarySupplierId!,
+        primary_quantity: this.splitData.primaryQuantity!,
+        secondary_supplier_id: this.splitData.secondarySupplierId!,
+        secondary_quantity: this.splitData.secondaryQuantity!,
+      };
+    }
+
     this.submitting.set(true);
     this.errorMessage.set(null);
 
+    const effectiveSupplierId = this.isSplitEnabled()
+      ? this.splitData.primarySupplierId
+      : this.formData.supplierId;
+
     if (this.isEditMode() && this.recommendationId()) {
-      this.recommendationService.update(this.recommendationId()!, {
+      const updatePayload: any = {
         recommended_quantity: this.formData.quantity,
-        supplier_id: this.formData.supplierId,
+        supplier_id: effectiveSupplierId,
         requested_delivery_date: this.formData.deliveryDate,
-      }).subscribe({
+      };
+      if (this.isSplitEnabled() && split_alloc) {
+        updatePayload.split_allocation = split_alloc;
+      } else if (!this.isSplitEnabled() && this.existingRecommendation()?.split_allocation) {
+        updatePayload.split_allocation = null;
+      }
+
+      this.recommendationService.update(this.recommendationId()!, updatePayload).subscribe({
         next: (updated) => {
           this.submitting.set(false);
           this.router.navigate(['/recommendations', updated.id]);
@@ -443,12 +699,17 @@ export class RecommendationFormComponent implements OnInit {
         }
       });
     } else {
-      this.recommendationService.create({
+      const createPayload: any = {
         product_id: this.formData.productId,
-        supplier_id: this.formData.supplierId,
+        supplier_id: effectiveSupplierId,
         recommended_quantity: this.formData.quantity,
         requested_delivery_date: this.formData.deliveryDate,
-      }).subscribe({
+      };
+      if (split_alloc) {
+        createPayload.split_allocation = split_alloc;
+      }
+
+      this.recommendationService.create(createPayload).subscribe({
         next: (created) => {
           this.submitting.set(false);
           this.router.navigate(['/recommendations', created.id]);

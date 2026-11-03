@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { RecommendationService } from '../../core/services/recommendation.service';
-import { EvaluationHistoryItem, RecommendationResponse } from '../../core/models/recommendation.model';
+import { EvaluationHistoryItem, RecommendationResponse, SplitAllocation } from '../../core/models/recommendation.model';
 import { StatusBadgeComponent } from '../../shared/components/status-badge/status-badge.component';
 
 @Component({
@@ -206,6 +206,73 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                         </span>
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- Multi-Vendor Split Sourcing Allocation Card (Scenario 2 / Rule 3) -->
+                <div *ngIf="splitAllocation()" class="split-card">
+                  <div class="split-card-header">
+                    <div class="split-badge-title">
+                      <span class="split-icon">🔀</span>
+                      <span>Multi-Vendor Split Sourcing Allocation</span>
+                    </div>
+                    <div class="split-total-cost">
+                      Total Cost: <strong>\${{ splitAllocation()?.total_cost | number:'1.2-2' }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="split-grid">
+                    <!-- Primary Supplier Card -->
+                    <div class="vendor-box primary-vendor-box">
+                      <div class="vendor-box-header">
+                        <span class="vendor-role primary-role">Primary Vendor (Capacity Capped)</span>
+                        <span class="vendor-id-pill">#{{ splitAllocation()?.primary_supplier_id }}</span>
+                      </div>
+                      <div class="vendor-box-name">{{ splitAllocation()?.primary_supplier_name || ('Supplier #' + splitAllocation()?.primary_supplier_id) }}</div>
+                      <div class="vendor-box-metrics">
+                        <div class="metric-row">
+                          <span class="metric-lbl">Allocated Units:</span>
+                          <span class="metric-val font-bold">{{ splitAllocation()?.primary_quantity }} units</span>
+                        </div>
+                        <div *ngIf="splitAllocation()?.primary_unit_price" class="metric-row">
+                          <span class="metric-lbl">Unit Price:</span>
+                          <span class="metric-val">\${{ splitAllocation()?.primary_unit_price | number:'1.2-2' }}</span>
+                        </div>
+                        <div class="metric-row cost-row">
+                          <span class="metric-lbl">Subtotal:</span>
+                          <span class="metric-val cost-val">\${{ splitAllocation()?.primary_cost | number:'1.2-2' }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="split-plus-icon">+</div>
+
+                    <!-- Secondary Supplier Card -->
+                    <div class="vendor-box secondary-vendor-box">
+                      <div class="vendor-box-header">
+                        <span class="vendor-role secondary-role">Secondary Vendor (Overflow Allocation)</span>
+                        <span class="vendor-id-pill">#{{ splitAllocation()?.secondary_supplier_id }}</span>
+                      </div>
+                      <div class="vendor-box-name">{{ splitAllocation()?.secondary_supplier_name || ('Supplier #' + splitAllocation()?.secondary_supplier_id) }}</div>
+                      <div class="vendor-box-metrics">
+                        <div class="metric-row">
+                          <span class="metric-lbl">Allocated Units:</span>
+                          <span class="metric-val font-bold">{{ splitAllocation()?.secondary_quantity }} units</span>
+                        </div>
+                        <div *ngIf="splitAllocation()?.secondary_unit_price" class="metric-row">
+                          <span class="metric-lbl">Unit Price:</span>
+                          <span class="metric-val">\${{ splitAllocation()?.secondary_unit_price | number:'1.2-2' }}</span>
+                        </div>
+                        <div class="metric-row cost-row">
+                          <span class="metric-lbl">Subtotal:</span>
+                          <span class="metric-val cost-val">\${{ splitAllocation()?.secondary_cost | number:'1.2-2' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="split-note">
+                    Primary vendor capacity reached ({{ splitAllocation()?.primary_quantity }} units max). Balance fulfilled by qualified alternative vendor to complete {{ (splitAllocation()?.primary_quantity ?? 0) + (splitAllocation()?.secondary_quantity ?? 0) }} total units before target delivery date.
                   </div>
                 </div>
 
@@ -594,6 +661,128 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       color: #2563eb;
     }
 
+    /* Multi-Vendor Split Card Styles */
+    .split-card {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      padding: 1rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+    .split-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding-bottom: 0.65rem;
+      border-bottom: 1px dashed #86efac;
+    }
+    .split-badge-title {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #166534;
+    }
+    .split-total-cost {
+      font-size: 0.85rem;
+      color: #14532d;
+    }
+    .split-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    @media (max-width: 640px) {
+      .split-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .split-plus-icon {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #16a34a;
+      text-align: center;
+    }
+    .vendor-box {
+      background: #ffffff;
+      border: 1px solid #dcfce7;
+      border-radius: 6px;
+      padding: 0.75rem 0.85rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+    .vendor-box-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    .vendor-role {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .primary-role {
+      color: #0369a1;
+    }
+    .secondary-role {
+      color: #b45309;
+    }
+    .vendor-id-pill {
+      font-size: 0.7rem;
+      background: #f1f5f9;
+      color: #475569;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .vendor-box-name {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .vendor-box-metrics {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      font-size: 0.8rem;
+      color: #475569;
+      margin-top: 0.2rem;
+    }
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+    }
+    .metric-val {
+      color: #1e293b;
+    }
+    .cost-row {
+      border-top: 1px solid #f1f5f9;
+      padding-top: 0.2rem;
+      margin-top: 0.15rem;
+    }
+    .cost-val {
+      font-weight: 700;
+      color: #15803d;
+    }
+    .split-note {
+      font-size: 0.75rem;
+      color: #15803d;
+      background: #f0fdf4;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
+      line-height: 1.4;
+    }
+
     /* Reasoning Section */
     .reasoning-section {
       display: flex;
@@ -962,6 +1151,20 @@ export class RecommendationDetailComponent implements OnInit {
   readonly latestSequence = computed(() => {
     const h = this.history();
     return h.length > 0 ? Math.max(...h.map(i => i.evaluation_sequence)) : 0;
+  });
+
+  readonly splitAllocation = computed<SplitAllocation | null>(() => {
+    const rec = this.recommendation();
+    if (rec?.split_allocation) return rec.split_allocation;
+
+    const h = this.history();
+    if (h && h.length > 0) {
+      const latest = h[h.length - 1];
+      if (latest.calculations && latest.calculations['split_allocation']) {
+        return latest.calculations['split_allocation'] as SplitAllocation;
+      }
+    }
+    return null;
   });
 
   ngOnInit(): void {

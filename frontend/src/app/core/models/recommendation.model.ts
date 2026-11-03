@@ -2,6 +2,20 @@ export type AgentDecision = 'ACCEPT' | 'MODIFY' | 'REJECT' | 'INVESTIGATE';
 
 export type RecommendationStatus = 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | string;
 
+export interface SplitAllocation {
+  primary_supplier_id: number;
+  primary_supplier_name?: string | null;
+  primary_quantity: number;
+  primary_unit_price?: number | null;
+  primary_cost?: number | null;
+  secondary_supplier_id: number;
+  secondary_supplier_name?: string | null;
+  secondary_quantity: number;
+  secondary_unit_price?: number | null;
+  secondary_cost?: number | null;
+  total_cost?: number | null;
+}
+
 export interface RecommendationResponse {
   id: number;
   product_id: number;
@@ -18,6 +32,7 @@ export interface RecommendationResponse {
   agent_suggested_supplier_name?: string | null;
   agent_reasoning: string | null;
   evaluated_at: string | null;
+  split_allocation?: SplitAllocation | null;
 }
 
 export interface RecommendationCreatePayload {
@@ -25,12 +40,14 @@ export interface RecommendationCreatePayload {
   supplier_id?: number | null;
   recommended_quantity: number;
   requested_delivery_date: string;
+  split_allocation?: SplitAllocation | null;
 }
 
 export interface RecommendationUpdatePayload {
   recommended_quantity?: number;
   supplier_id?: number | null;
   requested_delivery_date?: string;
+  split_allocation?: SplitAllocation | null;
 }
 
 export interface ProductLookup {
@@ -63,6 +80,7 @@ export interface ValueChange<T = any> {
 export interface BuyerModifications {
   quantity?: ValueChange<number>;
   supplier?: ValueChange<number>;
+  split_allocation?: ValueChange<any>;
 }
 
 export interface EvaluationHistoryItem {

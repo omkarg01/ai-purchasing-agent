@@ -1,5 +1,5 @@
 from typing import Optional
-from sqlalchemy import CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import relationship
 
 from app.database.session import Base
@@ -36,6 +36,7 @@ class PurchaseRecommendation(Base):
     agent_reasoning = Column(Text, nullable=True)
     agent_decision = Column(String(20), nullable=True)
     evaluated_at = Column(DateTime, nullable=True)
+    split_allocation = Column(JSON, nullable=True)
 
     __table_args__ = (
         CheckConstraint(

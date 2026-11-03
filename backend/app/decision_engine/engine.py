@@ -159,10 +159,12 @@ def evaluate_purchasing_decision(input_data: EngineInput) -> DecisionResult:
                 "primary_supplier_id": alloc.primary_supplier_id,
                 "primary_supplier_name": alloc.primary_supplier_name,
                 "primary_quantity": alloc.primary_quantity,
+                "primary_unit_price": alloc.primary_unit_price,
                 "primary_cost": alloc.primary_cost,
                 "secondary_supplier_id": alloc.secondary_supplier_id,
                 "secondary_supplier_name": alloc.secondary_supplier_name,
                 "secondary_quantity": alloc.secondary_quantity,
+                "secondary_unit_price": alloc.secondary_unit_price,
                 "secondary_cost": alloc.secondary_cost,
                 "total_cost": alloc.total_cost,
             }

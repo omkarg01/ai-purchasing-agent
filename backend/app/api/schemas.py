@@ -22,6 +22,7 @@ class ValueChange(BaseModel):
 class BuyerModifications(BaseModel):
     quantity: Optional[ValueChange] = None
     supplier: Optional[ValueChange] = None
+    split_allocation: Optional[ValueChange] = None
 
 
 class EvaluationHistoryResponse(BaseModel):
@@ -48,12 +49,14 @@ class RecommendationCreateRequest(BaseModel):
     supplier_id: Optional[int] = Field(default=None, description="Preferred supplier id")
     recommended_quantity: int = Field(gt=0, description="Quantity to purchase")
     requested_delivery_date: date = Field(description="Desired target delivery date")
+    split_allocation: Optional[Dict[str, Any]] = Field(default=None, description="Optional multi-vendor split allocation")
 
 
 class RecommendationUpdateRequest(BaseModel):
     recommended_quantity: Optional[int] = Field(default=None, gt=0, description="Updated quantity")
     supplier_id: Optional[int] = Field(default=None, description="Updated preferred supplier")
     requested_delivery_date: Optional[date] = Field(default=None, description="Updated delivery date")
+    split_allocation: Optional[Dict[str, Any]] = Field(default=None, description="Updated multi-vendor split allocation")
 
 
 class ProductLookupResponse(BaseModel):
@@ -91,36 +94,7 @@ class RecommendationResponse(BaseModel):
     agent_suggested_supplier_name: Optional[str] = None
     agent_reasoning: Optional[str] = None
     evaluated_at: Optional[datetime] = None
-
-
-class ValueChange(BaseModel):
-    previous: Any
-    updated: Any
-    previous_name: Optional[str] = None
-    updated_name: Optional[str] = None
-
-
-class BuyerModifications(BaseModel):
-    quantity: Optional[ValueChange] = None
-    supplier: Optional[ValueChange] = None
-
-
-class EvaluationHistoryResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    recommendation_id: int
-    evaluation_sequence: int
-    evaluated_quantity: int
-    evaluated_supplier_id: Optional[int] = None
-    evaluated_supplier_name: Optional[str] = None
-    agent_decision: str
-    explanation: Optional[str] = None
-    calculations: Optional[Dict[str, Any]] = None
-    risks: Optional[List[str]] = None
-    warnings: Optional[List[str]] = None
-    buyer_modifications: Optional[BuyerModifications] = None
-    evaluated_at: datetime
+    split_allocation: Optional[Dict[str, Any]] = None
 
 
 class ApproveRequest(BaseModel):
