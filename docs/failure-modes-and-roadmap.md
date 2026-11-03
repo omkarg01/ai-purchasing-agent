@@ -203,3 +203,4 @@ flowchart LR
 - Enable tool-calling for the AI agent (e.g. querying carrier APIs, checking ERP purchase order status).
 - Allow buyers to select policy presets (e.g. *Low Cost*, *Fastest Delivery*, *Balanced Risk*).
 - Integrate outbound webhook to draft Purchase Orders directly in external ERP systems (SAP, NetSuite, Coupa) upon human approval.
+

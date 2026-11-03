@@ -30,6 +30,7 @@ class SupplierProduct(Base):
     unit_price = Column(Numeric(10, 2), nullable=False)
     lead_time_days = Column(Integer, nullable=False)
     minimum_order_quantity = Column(Integer, nullable=False, default=1)
+    available_capacity = Column(Integer, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(

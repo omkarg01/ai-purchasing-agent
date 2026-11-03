@@ -23,12 +23,13 @@ def analyze_chronological_stockout_timeline(
     forecast: DemandForecastInput,
     open_orders: List[OpenPurchaseOrderInput],
     evaluation_date: date,
+    safety_stock_quantity: int = 0,
 ) -> StockoutTimelineAnalysis:
     """Chronologically simulates daily inventory levels to evaluate stockout risk.
     
     Separates:
     1. Interim stockout gap (days and shortfall when stock depletes before a PO arrives).
-    2. Final unmet demand (overall cumulative deficit at the end of the horizon).
+    2. Final unmet demand (overall cumulative deficit at the end of the horizon, including safety buffer).
     3. Additional purchasing requirement (units required to cover shortages or bridge gaps).
     """
     daily_demand = calculate_daily_demand(forecast)
@@ -73,8 +74,13 @@ def analyze_chronological_stockout_timeline(
         if current_date in po_deliveries_by_date:
             current_stock += po_deliveries_by_date[current_date]
 
-        # Daily consumption during the day
-        current_stock -= daily_demand
+        # Daily consumption during the day (discrete series curve if provided, else flat rate)
+        if forecast.daily_demand_series and day_offset < len(forecast.daily_demand_series):
+            consumption_today = float(forecast.daily_demand_series[day_offset])
+        else:
+            consumption_today = daily_demand
+
+        current_stock -= consumption_today
 
         # Floating-point tolerance threshold
         if current_stock < -1e-4:
@@ -90,9 +96,10 @@ def analyze_chronological_stockout_timeline(
     # Final projected inventory at horizon end
     final_projected_inventory = int(round(current_stock))
     
-    # Cumulative net position across entire horizon:
+    # Cumulative gross requirement includes safety stock buffer (Rule 1)
+    gross_requirement = forecast.forecast_quantity + safety_stock_quantity
     total_supply = on_hand + total_open_po_quantity
-    final_unmet_demand = max(0, forecast.forecast_quantity - total_supply)
+    final_unmet_demand = max(0, gross_requirement - total_supply)
 
     # Additional purchasing requirement:
     # If there is final unmet demand, that is the primary purchasing requirement.
@@ -101,7 +108,7 @@ def analyze_chronological_stockout_timeline(
     if final_unmet_demand > 0:
         additional_purchasing_requirement = final_unmet_demand
     elif has_interim_stockout:
-        additional_purchasing_requirement = int(round(max_deficit_during_interim))
+        additional_purchasing_requirement = int(round(max_deficit_during_interim + safety_stock_quantity))
     else:
         additional_purchasing_requirement = 0
 
@@ -115,4 +122,6 @@ def analyze_chronological_stockout_timeline(
         final_projected_inventory=final_projected_inventory,
         final_unmet_demand=final_unmet_demand,
         additional_purchasing_requirement=additional_purchasing_requirement,
+        safety_stock_quantity=safety_stock_quantity,
+        target_ending_inventory=safety_stock_quantity,
     )

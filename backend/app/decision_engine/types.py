@@ -5,18 +5,44 @@ from typing import Any, Dict, List, Literal, Optional
 
 
 @dataclass(frozen=True)
+class PriceTier:
+    """Volume discount pricing tier for a supplier product."""
+    min_quantity: int
+    unit_price: Decimal
+
+
+@dataclass(frozen=True)
+class SplitOrderAllocation:
+    """Multi-vendor order split allocation when single supplier capacity is capped."""
+    primary_supplier_id: int
+    primary_supplier_name: str
+    primary_quantity: int
+    primary_unit_price: float
+    primary_cost: float
+    secondary_supplier_id: int
+    secondary_supplier_name: str
+    secondary_quantity: int
+    secondary_unit_price: float
+    secondary_cost: float
+    total_cost: float
+
+
+@dataclass(frozen=True)
 class InventoryInput:
     """Current warehouse inventory state for the product."""
-    available_quantity: int       # Immediately available unreserved on-hand stock
-    storage_capacity: int         # Maximum warehouse capacity in units
+    available_quantity: int                   # Immediately available unreserved on-hand stock
+    storage_capacity: int                     # Maximum warehouse capacity in units
+    safety_stock_quantity: int = 0            # Desired safety buffer units (Rule 1)
+    facility_available_m3: Optional[float] = None  # Aggregate facility storage in m3 (Rule 4)
 
 
 @dataclass(frozen=True)
 class DemandForecastInput:
     """Projected demand across a specified time period."""
-    forecast_quantity: int        # Total projected demand units
+    forecast_quantity: int                    # Total projected demand units
     period_start: date
     period_end: date
+    daily_demand_series: Optional[List[int]] = None  # Optional discrete daily demand curve (FM-4)
 
 
 @dataclass(frozen=True)
@@ -39,6 +65,9 @@ class SupplierProductInput:
     unit_price: Decimal
     lead_time_days: int
     minimum_order_quantity: int
+    available_capacity: Optional[int] = None         # Maximum supplier order capacity (Rule 3)
+    historical_delay_days: int = 0                   # Supplier OTIF lead-time delay variance (Rule 5)
+    price_tiers: Optional[List[PriceTier]] = None     # Bulk volume discount tiers (Rule 6)
 
 
 @dataclass(frozen=True)
@@ -73,6 +102,9 @@ class EngineInput:
     open_orders: List[OpenPurchaseOrderInput]
     suppliers: List[SupplierProductInput]
     budget: BudgetInput
+    shelf_life_days: Optional[int] = None            # Product shelf life in days (Rule 2)
+    unit_volume_m3: float = 1.0                      # Cubic volume per unit (Rule 4)
+    ranking_weights: Optional[Dict[str, float]] = None  # Custom scoring weights (FM-9)
 
 
 @dataclass(frozen=True)
@@ -91,6 +123,8 @@ class StockoutTimelineAnalysis:
     final_projected_inventory: int
     final_unmet_demand: int
     additional_purchasing_requirement: int
+    safety_stock_quantity: int = 0
+    target_ending_inventory: int = 0
 
 
 @dataclass(frozen=True)
@@ -108,7 +142,13 @@ class PurchasingOption:
     is_timing_feasible: bool
     is_budget_feasible: bool
     is_storage_feasible: bool
+    is_capacity_feasible: bool = True
     trade_offs: List[str] = field(default_factory=list)
+    is_split_sourcing: bool = False
+    split_allocation: Optional[SplitOrderAllocation] = None
+    effective_lead_time_days: Optional[int] = None
+    unlocked_price_tier: Optional[PriceTier] = None
+    composite_score: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -140,4 +180,3 @@ class DecisionResult:
     risks: List[str]
     warnings: List[str]
     reasoning_points: List[str]
-

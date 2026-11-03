@@ -1,11 +1,13 @@
+import os
 from datetime import date, datetime, timezone
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.schemas import (
+    ApproveRequest,
     EvaluationHistoryResponse,
     EvaluationRequest,
     RecommendationCreateRequest,
@@ -235,12 +237,16 @@ def evaluate_recommendation(
     return recommendation
 
 
+APPROVAL_THRESHOLD_LIMIT = float(os.getenv("MAX_DIRECT_APPROVAL_AMOUNT", "10000.0"))
+
+
 @router.post(
     "/{recommendation_id}/approve",
     response_model=RecommendationResponse,
 )
 def approve_recommendation(
     recommendation_id: int,
+    payload: Optional[ApproveRequest] = None,
     db: Session = Depends(get_db),
 ):
     """Approves a purchase recommendation after human review.
@@ -249,6 +255,7 @@ def approve_recommendation(
     - Only recommendations in 'PENDING_APPROVAL' status can be approved.
     - Transitions status strictly to 'APPROVED'.
     - Preserves all original recommendation fields and agent evaluation fields.
+    - Enforces governance approval dollar threshold limit (Rule / FM-7).
     """
     recommendation = (
         db.query(PurchaseRecommendation).filter_by(id=recommendation_id).first()
@@ -265,6 +272,26 @@ def approve_recommendation(
             detail=(
                 f"Cannot approve recommendation with status '{recommendation.status}'. "
                 "Only recommendations with status 'PENDING_APPROVAL' can be approved."
+            ),
+        )
+
+    # Governance threshold validation (Rule / FM-7)
+    order_val = None
+    if recommendation.supplier_id:
+        sp = db.query(SupplierProduct).filter_by(
+            supplier_id=recommendation.supplier_id,
+            product_id=recommendation.product_id,
+        ).first()
+        if sp:
+            order_val = float(recommendation.recommended_quantity * sp.unit_price)
+
+    has_override = payload.manager_override if payload else False
+    if order_val is not None and order_val > APPROVAL_THRESHOLD_LIMIT and not has_override:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Order total value (${order_val:,.2f}) exceeds the direct approval threshold limit "
+                f"(${APPROVAL_THRESHOLD_LIMIT:,.2f}). Manager override authorization is required."
             ),
         )
 
@@ -365,6 +392,7 @@ def run_evaluation_with_engine(
             unit_price=sp.unit_price,
             lead_time_days=sp.lead_time_days,
             minimum_order_quantity=sp.minimum_order_quantity,
+            available_capacity=getattr(sp, "available_capacity", None),
         )
         for sp in supplier_prods
     ]
