@@ -1,0 +1,370 @@
+{
+  "scenarios": [
+    {
+      "scenario_id": "EV-001",
+      "scenario_name": "Excessive Recommended Quantity",
+      "description": "Buyer requested 500 units when net demand shortage is only 200 units. The engine must adjust the purchase quantity downward to prevent excess inventory while securing the on-time supplier.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 101,
+          "product_id": 1,
+          "recommended_quantity": 500,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-06",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 100,
+          "storage_capacity": 1000
+        },
+        "forecast": {
+          "forecast_quantity": 300,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-15"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Acme Industrial Supplies",
+            "unit_price": "15.00",
+            "lead_time_days": 3,
+            "minimum_order_quantity": 50
+          }
+        ],
+        "budget": {
+          "total_budget": "20000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "MODIFY",
+        "suggested_quantity": 200,
+        "suggested_supplier_id": 1,
+        "constraints_to_respect": ["budget", "storage_capacity", "lead_time", "moq"],
+        "key_reasoning": "Adjust order downward from 500 to 200 units to match net shortage",
+        "failure_conditions": ["ACCEPT", "REJECT", "suggested_quantity == 500"]
+      }
+    },
+    {
+      "scenario_id": "EV-002",
+      "scenario_name": "Optimal Recommendation",
+      "description": "Recommended quantity of 150 units and preferred supplier Acme match the calculated net requirement exactly and meet delivery and budget constraints.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 102,
+          "product_id": 1,
+          "recommended_quantity": 150,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-05",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 50,
+          "storage_capacity": 500
+        },
+        "forecast": {
+          "forecast_quantity": 200,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Acme Industrial Supplies",
+            "unit_price": "10.00",
+            "lead_time_days": 2,
+            "minimum_order_quantity": 50
+          }
+        ],
+        "budget": {
+          "total_budget": "10000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "ACCEPT",
+        "suggested_quantity": 150,
+        "suggested_supplier_id": 1,
+        "constraints_to_respect": ["budget", "storage_capacity", "lead_time"],
+        "key_reasoning": "Quantity and supplier are optimal, stockout mitigated within budget",
+        "failure_conditions": ["MODIFY", "REJECT", "INVESTIGATE"]
+      }
+    },
+    {
+      "scenario_id": "EV-003",
+      "scenario_name": "Demand Fully Covered by Stock",
+      "description": "Warehouse on-hand stock of 200 units fully covers the 14-day demand forecast of 150 units. No replenishment purchase is warranted.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 103,
+          "product_id": 1,
+          "recommended_quantity": 100,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-10",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 200,
+          "storage_capacity": 500
+        },
+        "forecast": {
+          "forecast_quantity": 150,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-15"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Acme Industrial Supplies",
+            "unit_price": "10.00",
+            "lead_time_days": 3,
+            "minimum_order_quantity": 20
+          }
+        ],
+        "budget": {
+          "total_budget": "10000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "REJECT",
+        "suggested_quantity": 0,
+        "suggested_supplier_id": null,
+        "constraints_to_respect": ["holding_cost_prevention"],
+        "key_reasoning": "Zero net shortage and no interim stockout; purchase would cause excess holding costs",
+        "failure_conditions": ["ACCEPT", "MODIFY", "suggested_quantity > 0"]
+      }
+    },
+    {
+      "scenario_id": "EV-004",
+      "scenario_name": "Supplier MOQ Exceeds Shortage",
+      "description": "Net shortage is 20 units, but the only catalog supplier enforces a Minimum Order Quantity (MOQ) of 100 units. The engine must adjust the order to 100 units while validating storage and budget feasibility.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 104,
+          "product_id": 1,
+          "recommended_quantity": 20,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-08",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 100,
+          "storage_capacity": 500
+        },
+        "forecast": {
+          "forecast_quantity": 120,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Bulk Supplies Inc",
+            "unit_price": "12.00",
+            "lead_time_days": 4,
+            "minimum_order_quantity": 100
+          }
+        ],
+        "budget": {
+          "total_budget": "10000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "MODIFY",
+        "suggested_quantity": 100,
+        "suggested_supplier_id": 1,
+        "constraints_to_respect": ["moq_enforcement", "storage_capacity", "budget"],
+        "key_reasoning": "Order adjusted to 100 units to satisfy supplier MOQ of 100",
+        "failure_conditions": ["ACCEPT", "suggested_quantity < 100"]
+      }
+    },
+    {
+      "scenario_id": "EV-005",
+      "scenario_name": "Insufficient Purchasing Budget with Imminent Stockout",
+      "description": "Stockout will occur within 1 day (on-hand 20, daily burn 20), but remaining purchasing budget ($200) cannot cover the replenishment order ($4,500). System must escalate for investigation.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 105,
+          "product_id": 1,
+          "recommended_quantity": 180,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-08",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 20,
+          "storage_capacity": 1000
+        },
+        "forecast": {
+          "forecast_quantity": 200,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Premium Components Ltd",
+            "unit_price": "25.00",
+            "lead_time_days": 3,
+            "minimum_order_quantity": 50
+          }
+        ],
+        "budget": {
+          "total_budget": "5000.00",
+          "committed_amount": "4800.00"
+        }
+      },
+      "expected": {
+        "decision": "INVESTIGATE",
+        "suggested_supplier_id": null,
+        "constraints_to_respect": ["budget_limit"],
+        "key_reasoning": "Stockout imminent and purchasing budget is insufficient",
+        "failure_conditions": ["ACCEPT", "MODIFY"]
+      }
+    },
+    {
+      "scenario_id": "EV-006",
+      "scenario_name": "Storage Capacity Exceeded",
+      "description": "Warehouse storage capacity is only 120 units. Receiving the required 210 units would result in 240 units on-hand, causing severe warehouse overflow. Engine must trigger human investigation.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 106,
+          "product_id": 1,
+          "recommended_quantity": 210,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-06",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 90,
+          "storage_capacity": 120
+        },
+        "forecast": {
+          "forecast_quantity": 300,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Standard Supply Co",
+            "unit_price": "10.00",
+            "lead_time_days": 2,
+            "minimum_order_quantity": 50
+          }
+        ],
+        "budget": {
+          "total_budget": "50000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "INVESTIGATE",
+        "suggested_supplier_id": null,
+        "constraints_to_respect": ["storage_capacity_limit"],
+        "key_reasoning": "Replenishment volume exceeds physical warehouse capacity",
+        "failure_conditions": ["ACCEPT", "MODIFY"]
+      }
+    },
+    {
+      "scenario_id": "EV-007",
+      "scenario_name": "Supplier Lead Time Causes Stockout",
+      "description": "Stockout occurs in 2 days (2026-11-03), but supplier lead time is 12 days (delivery 2026-11-13). Supplier cannot prevent stockout or meet target deadline.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 107,
+          "product_id": 1,
+          "recommended_quantity": 120,
+          "supplier_id": 1,
+          "requested_delivery_date": "2026-11-05",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 30,
+          "storage_capacity": 1000
+        },
+        "forecast": {
+          "forecast_quantity": 150,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [
+          {
+            "supplier_id": 1,
+            "supplier_name": "Overseas Parts Express",
+            "unit_price": "15.00",
+            "lead_time_days": 12,
+            "minimum_order_quantity": 50
+          }
+        ],
+        "budget": {
+          "total_budget": "20000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "INVESTIGATE",
+        "suggested_supplier_id": null,
+        "constraints_to_respect": ["lead_time", "delivery_deadline"],
+        "key_reasoning": "Standard supplier lead times cannot prevent stockout; buyer must investigate rush delivery or expediting",
+        "failure_conditions": ["ACCEPT"]
+      }
+    },
+    {
+      "scenario_id": "EV-008",
+      "scenario_name": "No Catalog Suppliers Available",
+      "description": "Product has an urgent replenishment shortage of 160 units, but no approved catalog suppliers are registered in the system. Human procurement buyer must source a vendor.",
+      "input": {
+        "evaluation_date": "2026-11-01",
+        "recommendation": {
+          "id": 108,
+          "product_id": 1,
+          "recommended_quantity": 160,
+          "supplier_id": null,
+          "requested_delivery_date": "2026-11-06",
+          "status": "PENDING_APPROVAL"
+        },
+        "inventory": {
+          "available_quantity": 40,
+          "storage_capacity": 1000
+        },
+        "forecast": {
+          "forecast_quantity": 200,
+          "period_start": "2026-11-01",
+          "period_end": "2026-11-11"
+        },
+        "open_orders": [],
+        "suppliers": [],
+        "budget": {
+          "total_budget": "20000.00",
+          "committed_amount": "0.00"
+        }
+      },
+      "expected": {
+        "decision": "INVESTIGATE",
+        "suggested_quantity": null,
+        "suggested_supplier_id": null,
+        "constraints_to_respect": ["supplier_availability"],
+        "key_reasoning": "No suppliers registered; human buyer must investigate and onboard external supplier",
+        "failure_conditions": ["ACCEPT", "MODIFY"]
+      }
+    }
+  ]
+}
+
