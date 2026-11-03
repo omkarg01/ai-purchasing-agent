@@ -10,7 +10,7 @@ An autonomous, enterprise-grade AI purchasing agent for supply chain inventory r
   Your browser does not support the video tag.
 </video>
 
-> 🎬 **Direct Video File:** [ai_purchasing_agent_demo_walkthrough_v2.mp4](scripts/demo/ai_purchasing_agent_demo_walkthrough_v2.mp4) *(1080p HD, 2m 45s)*  
+> 🎬 **Direct Video File:** [ai_purchasing_agent_demo_walkthrough_v2.mp4](https://drive.google.com/file/d/1M0_L2RdQtZDNvrbOkByIZpDS1UuyjwF5/view?usp=sharing) *(1080p HD, 2m 45s)*  
 > 🎠 **Interactive Feature Carousel:** [Open Browser-Based Carousel Viewer](scripts/demo/carousel.html) *(Slide through features with arrow keys)*  
 > 📸 **Full Visual Gallery & Rules Tour:** [View Complete Feature & Decision Gallery](scripts/demo/GALLERY.md)
 
