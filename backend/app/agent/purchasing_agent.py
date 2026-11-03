@@ -113,3 +113,4 @@ Maintain a formal, objective, senior procurement analyst tone. Do not use generi
 
     # Graceful fallback to deterministic engine points
     return "\n\n".join(decision_result.reasoning_points)
+

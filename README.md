@@ -12,15 +12,15 @@ purchasing-agent/
 │   │   ├── api/
 │   │   ├── agent/
 │   │   ├── decision_engine/
-│   │   ├── services/
-│   │   ├── integrations/
 │   │   ├── models/
 │   │   └── database/
 │   ├── tests/
 │   └── requirements.txt
 ├── docs/
-│   ├── thinking-document.md
-│   └── architecture-and-decisions.md
+│   ├── architecture.md
+│   ├── database-architecture-and-invariants.md
+│   ├── evaluation-approach.md
+│   └── thinking-document.md
 ├── README.md
 └── .env.example
 ```

@@ -31,7 +31,7 @@ from app.models.purchase_recommendation import PurchaseRecommendation
 from app.models.purchasing_budget import PurchasingBudget
 from app.models.supplier import Supplier
 from app.models.supplier_product import SupplierProduct
-from app.orchestrator.agent_briefing import generate_purchasing_briefing
+from app.agent.purchasing_agent import generate_purchasing_briefing
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 

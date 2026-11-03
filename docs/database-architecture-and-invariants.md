@@ -1,4 +1,6 @@
-# Architecture & Engineering Decisions
+# Database Architecture & Persistence Invariants
+
+> For the comprehensive end-to-end system architecture (Presentation, API, Decision Engine, and LLM Intelligence layers), see [`docs/architecture.md`](./architecture.md).
 
 ## 1. Database Architecture: SQLite & SQLAlchemy ORM
 
