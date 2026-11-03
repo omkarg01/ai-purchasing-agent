@@ -110,13 +110,19 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
             </div>
             <div class="panel-body">
               <div class="info-group">
-                <label class="info-label">Product ID</label>
-                <div class="info-value">#{{ recommendation()?.product_id }}</div>
+                <label class="info-label">Product</label>
+                <div class="info-value">
+                  {{ recommendation()?.product_name || ('Product #' + recommendation()?.product_id) }}
+                  <span *ngIf="recommendation()?.product_sku" class="panel-tag">{{ recommendation()?.product_sku }}</span>
+                </div>
               </div>
 
               <div class="info-group">
-                <label class="info-label">Target Supplier ID</label>
-                <div class="info-value">#{{ recommendation()?.supplier_id }}</div>
+                <label class="info-label">Target Supplier</label>
+                <div class="info-value">
+                  {{ recommendation()?.supplier_name || ('Supplier #' + recommendation()?.supplier_id) }}
+                  <span class="panel-tag">#{{ recommendation()?.supplier_id }}</span>
+                </div>
               </div>
 
               <div class="info-group">
@@ -188,13 +194,15 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                     <div class="comp-values">
                       <div class="comp-item">
                         <span class="val-sub">Original</span>
-                        <span class="val-num">Supplier #{{ recommendation()?.supplier_id }}</span>
+                        <span class="val-num">
+                          {{ recommendation()?.supplier_name || ('Supplier #' + recommendation()?.supplier_id) }}
+                        </span>
                       </div>
                       <div class="comp-arrow">&rarr;</div>
                       <div class="comp-item" [class.val-highlight]="isSupplierModified()">
                         <span class="val-sub">Suggested</span>
                         <span class="val-num">
-                          {{ recommendation()?.agent_suggested_supplier_id ? ('Supplier #' + recommendation()?.agent_suggested_supplier_id) : '—' }}
+                          {{ recommendation()?.agent_suggested_supplier_name || (recommendation()?.agent_suggested_supplier_id ? ('Supplier #' + recommendation()?.agent_suggested_supplier_id) : '—') }}
                         </span>
                       </div>
                     </div>

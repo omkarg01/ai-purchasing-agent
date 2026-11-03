@@ -89,7 +89,7 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
           <thead>
             <tr>
               <th>ID</th>
-              <th>Product ID</th>
+              <th>Product</th>
               <th>Target Supplier</th>
               <th>Recommended Qty</th>
               <th>Requested Delivery</th>
@@ -101,8 +101,8 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
           <tbody>
             <tr *ngFor="let rec of recommendations()">
               <td class="cell-id">#{{ rec.id }}</td>
-              <td class="cell-primary">Product #{{ rec.product_id }}</td>
-              <td>Supplier #{{ rec.supplier_id }}</td>
+              <td class="cell-primary">{{ rec.product_name || ('Product #' + rec.product_id) }}</td>
+              <td>{{ rec.supplier_name || ('Supplier #' + rec.supplier_id) }}</td>
               <td class="cell-number">{{ rec.recommended_quantity }}</td>
               <td>{{ rec.requested_delivery_date }}</td>
               <td>

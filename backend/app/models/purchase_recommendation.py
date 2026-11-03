@@ -1,3 +1,4 @@
+from typing import Optional
 from sqlalchemy import CheckConstraint, Column, Date, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
@@ -64,6 +65,26 @@ class PurchaseRecommendation(Base):
         back_populates="agent_evaluations",
     )
     purchase_orders = relationship("PurchaseOrder", back_populates="recommendation")
+
+    @property
+    def product_name(self) -> Optional[str]:
+        return self.product.name if self.product else None
+
+    @property
+    def product_sku(self) -> Optional[str]:
+        return self.product.sku if self.product else None
+
+    @property
+    def supplier_name(self) -> Optional[str]:
+        return self.supplier.supplier_name if self.supplier else None
+
+    @property
+    def agent_suggested_supplier_name(self) -> Optional[str]:
+        return (
+            self.agent_suggested_supplier.supplier_name
+            if self.agent_suggested_supplier
+            else None
+        )
 
     def __repr__(self) -> str:
         return (

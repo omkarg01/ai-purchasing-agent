@@ -46,13 +46,17 @@ class RecommendationResponse(BaseModel):
 
     id: int
     product_id: int
+    product_name: Optional[str] = None
+    product_sku: Optional[str] = None
     recommended_quantity: int
     supplier_id: Optional[int] = None
+    supplier_name: Optional[str] = None
     requested_delivery_date: date
     status: str
 
     agent_decision: Optional[str] = None
     agent_suggested_quantity: Optional[int] = None
     agent_suggested_supplier_id: Optional[int] = None
+    agent_suggested_supplier_name: Optional[str] = None
     agent_reasoning: Optional[str] = None
     evaluated_at: Optional[datetime] = None
