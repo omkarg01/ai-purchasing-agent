@@ -20,7 +20,7 @@ import { ProductLookup, SupplierLookup, RecommendationResponse, SplitAllocation 
 
       <div class="form-card">
         <div class="card-header">
-          <div class="header-badge">
+          <div class="header-badge"> 
             {{ isEditMode() ? 'Edit Recommendation #' + recommendationId() : 'New Purchasing Recommendation' }}
           </div>
           <h1 class="card-title">
@@ -714,11 +714,11 @@ export class RecommendationFormComponent implements OnInit {
       : this.formData.supplierId;
 
     if (this.isEditMode() && this.recommendationId()) {
-        const updatePayload: any = {
-          recommended_quantity: this.formData.quantity,
-          supplier_id: effectiveSupplierId,
-          requested_delivery_date: this.formData.deliveryDate,
-        };
+      const updatePayload: any = {
+        recommended_quantity: this.formData.quantity,
+        supplier_id: effectiveSupplierId,
+        requested_delivery_date: this.formData.deliveryDate,
+      };
       if (this.isSplitEnabled() && split_alloc) {
         updatePayload.split_allocation = split_alloc;
       } else if (!this.isSplitEnabled() && this.existingRecommendation()?.split_allocation) {
@@ -736,12 +736,12 @@ export class RecommendationFormComponent implements OnInit {
         }
       });
     } else {
-        const createPayload: any = {
-          product_id: this.formData.productId,
-          supplier_id: effectiveSupplierId,
-          recommended_quantity: this.formData.quantity,
-          requested_delivery_date: this.formData.deliveryDate,
-        };
+      const createPayload: any = {
+        product_id: this.formData.productId,
+        supplier_id: effectiveSupplierId,
+        recommended_quantity: this.formData.quantity,
+        requested_delivery_date: this.formData.deliveryDate,
+      };
       if (split_alloc) {
         createPayload.split_allocation = split_alloc;
       }

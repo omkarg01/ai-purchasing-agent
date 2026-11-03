@@ -241,6 +241,8 @@ def seed():
                 lead_time_days=lead_days,
                 minimum_order_quantity=moq,
                 available_capacity=cap,
+                is_moq_negotiable=True if moq > 20 else False,
+                expedited_lead_time_days=max(1, lead_days - 3) if lead_days > 4 else None,
             )
             for p_idx, sup_name, price, lead_days, moq, cap in sp_definitions
         ]

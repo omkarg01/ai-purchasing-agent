@@ -68,6 +68,8 @@ class SupplierProductInput:
     available_capacity: Optional[int] = None         # Maximum supplier order capacity (Rule 3)
     historical_delay_days: int = 0                   # Supplier OTIF lead-time delay variance (Rule 5)
     price_tiers: Optional[List[PriceTier]] = None     # Bulk volume discount tiers (Rule 6)
+    is_moq_negotiable: bool = True                   # Whether vendor is open to MOQ adjustments
+    expedited_lead_time_days: Optional[int] = None   # Vendor emergency rush lead time if available
 
 
 @dataclass(frozen=True)
@@ -152,12 +154,36 @@ class PurchasingOption:
 
 
 @dataclass(frozen=True)
+class NegotiationLever:
+    """Actionable numerical negotiation lever for buyer counter-offers."""
+    lever_type: Literal[
+        "LEAD_TIME_EXPEDITE",
+        "MOQ_REDUCTION",
+        "PRICE_BENCHMARK_COUNTER_OFFER",
+        "PARTIAL_BATCH_DELIVERY",
+    ]
+    title: str
+    target_supplier_id: int
+    target_supplier_name: str
+    current_value: str
+    target_value: str
+    potential_savings: Optional[float]
+    recommended_talking_point: str
+
+
+@dataclass(frozen=True)
 class InvestigationOption:
     """Actionable negotiation or expediting pathway for human buyer review.
     
     Tagged with is_confirmed=False since external negotiations are not assumed.
     """
-    pathway_type: Literal["EXISTING_SUPPLIER_EXPEDITE", "ALTERNATIVE_SUPPLIER_EMERGENCY"]
+    pathway_type: Literal[
+        "EXISTING_SUPPLIER_EXPEDITE",
+        "ALTERNATIVE_SUPPLIER_EMERGENCY",
+        "MOQ_REDUCTION_REQUEST",
+        "PRICE_BENCHMARK_COUNTER_OFFER",
+        "PARTIAL_BATCH_DELIVERY",
+    ]
     description: str
     target_supplier_id: Optional[int]
     target_supplier_name: Optional[str]
@@ -165,6 +191,7 @@ class InvestigationOption:
     potential_quantity: int
     action_required_by_buyer: str
     is_confirmed: bool = False
+    negotiation_lever: Optional[NegotiationLever] = None
 
 
 @dataclass(frozen=True)

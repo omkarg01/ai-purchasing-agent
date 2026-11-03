@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -31,6 +32,8 @@ class SupplierProduct(Base):
     lead_time_days = Column(Integer, nullable=False)
     minimum_order_quantity = Column(Integer, nullable=False, default=1)
     available_capacity = Column(Integer, nullable=True)
+    is_moq_negotiable = Column(Boolean, nullable=False, default=True)
+    expedited_lead_time_days = Column(Integer, nullable=True)
 
     __table_args__ = (
         UniqueConstraint(

@@ -77,6 +77,8 @@ class SupplierLookupResponse(BaseModel):
     lead_time_days: Optional[int] = None
     minimum_order_quantity: Optional[int] = None
     available_capacity: Optional[int] = None
+    is_moq_negotiable: Optional[bool] = None
+    expedited_lead_time_days: Optional[int] = None
 
 
 class RecommendationResponse(BaseModel):

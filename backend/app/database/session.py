@@ -71,6 +71,12 @@ def init_db(engine_override=None):
             if existing_cols and "available_capacity" not in existing_cols:
                 conn.execute(text("ALTER TABLE supplier_products ADD COLUMN available_capacity INTEGER NULL"))
                 conn.commit()
+            if existing_cols and "is_moq_negotiable" not in existing_cols:
+                conn.execute(text("ALTER TABLE supplier_products ADD COLUMN is_moq_negotiable BOOLEAN NOT NULL DEFAULT 1"))
+                conn.commit()
+            if existing_cols and "expedited_lead_time_days" not in existing_cols:
+                conn.execute(text("ALTER TABLE supplier_products ADD COLUMN expedited_lead_time_days INTEGER NULL"))
+                conn.commit()
         except Exception:
             pass
 

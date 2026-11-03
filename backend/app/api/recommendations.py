@@ -528,6 +528,8 @@ def run_evaluation_with_engine(
             lead_time_days=sp.lead_time_days,
             minimum_order_quantity=sp.minimum_order_quantity,
             available_capacity=getattr(sp, "available_capacity", None),
+            is_moq_negotiable=getattr(sp, "is_moq_negotiable", True),
+            expedited_lead_time_days=getattr(sp, "expedited_lead_time_days", None),
         )
         for sp in supplier_prods
     ]
@@ -604,10 +606,17 @@ def run_evaluation_with_engine(
 
     # 2. Atomic persistence: update recommendation & insert EvaluationHistory in one transaction
     try:
+        briefing = generate_purchasing_briefing(
+            engine_input=engine_input,
+            decision_result=decision_result,
+            product_name=product.name,
+            product_sku=product.sku,
+        )
+
         recommendation.agent_decision = decision_result.decision
         recommendation.agent_suggested_quantity = decision_result.suggested_quantity
         recommendation.agent_suggested_supplier_id = decision_result.suggested_supplier_id
-        recommendation.agent_reasoning = "\n\n".join(decision_result.reasoning_points)
+        recommendation.agent_reasoning = briefing
         eval_time = datetime.now(timezone.utc)
         recommendation.evaluated_at = eval_time
         recommendation.status = "PENDING_APPROVAL"
@@ -627,7 +636,7 @@ def run_evaluation_with_engine(
             evaluated_supplier_id=recommendation.supplier_id,
             evaluated_supplier_name=recommendation.supplier_name,
             agent_decision=decision_result.decision,
-            explanation=recommendation.agent_reasoning,
+            explanation=briefing,
             calculations=decision_result.calculations,
             risks=decision_result.risks,
             warnings=decision_result.warnings,

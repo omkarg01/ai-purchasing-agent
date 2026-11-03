@@ -8,6 +8,7 @@ from app.decision_engine.suppliers import (
 )
 from app.decision_engine.types import (
     InvestigationOption,
+    NegotiationLever,
     OpenPurchaseOrderInput,
     PurchasingOption,
     SplitOrderAllocation,
@@ -162,6 +163,7 @@ def generate_investigation_pathways(
     suppliers: List[SupplierProductInput],
     evaluation_date: date,
     target_date: date,
+    negotiation_levers: Optional[List[NegotiationLever]] = None,
 ) -> List[InvestigationOption]:
     """Generates negotiation and expediting investigation pathways for human buyer review."""
     pathways: List[InvestigationOption] = []
@@ -222,7 +224,153 @@ def generate_investigation_pathways(
                 )
             )
 
+    # 3. Specific Quantified Negotiation Levers
+    if negotiation_levers:
+        pathway_map: Dict[str, str] = {
+            "LEAD_TIME_EXPEDITE": "EXISTING_SUPPLIER_EXPEDITE",
+            "MOQ_REDUCTION": "MOQ_REDUCTION_REQUEST",
+            "PRICE_BENCHMARK_COUNTER_OFFER": "PRICE_BENCHMARK_COUNTER_OFFER",
+            "PARTIAL_BATCH_DELIVERY": "PARTIAL_BATCH_DELIVERY",
+        }
+        for lever in negotiation_levers:
+            ptype = pathway_map.get(lever.lever_type, "EXISTING_SUPPLIER_EXPEDITE")
+            pathways.append(
+                InvestigationOption(
+                    pathway_type=ptype,  # type: ignore[arg-type]
+                    description=lever.recommended_talking_point,
+                    target_supplier_id=lever.target_supplier_id,
+                    target_supplier_name=lever.target_supplier_name,
+                    required_delivery_date=stockout_ref,
+                    potential_quantity=timeline.additional_purchasing_requirement or 1,
+                    action_required_by_buyer=lever.recommended_talking_point,
+                    is_confirmed=False,
+                    negotiation_lever=lever,
+                )
+            )
+
     return pathways
+
+
+def generate_negotiation_levers(
+    suppliers: List[SupplierProductInput],
+    timeline: StockoutTimelineAnalysis,
+    net_shortage: int,
+    evaluation_date: date,
+    target_delivery_date: date,
+    incumbent_supplier_id: Optional[int] = None,
+) -> List[NegotiationLever]:
+    """Computes actionable, mathematically quantified negotiation levers with exact numerical targets."""
+    levers: List[NegotiationLever] = []
+    stockout_ref = timeline.stockout_date or target_delivery_date
+
+    # 1. Lead Time Expediting Lever
+    for s in suppliers:
+        effective_lead = s.lead_time_days + max(0, s.historical_delay_days)
+        arrival = evaluation_date + timedelta(days=effective_lead)
+        if arrival > stockout_ref:
+            days_to_stockout = (stockout_ref - evaluation_date).days
+            required_lead = max(1, days_to_stockout)
+            if effective_lead > required_lead:
+                talking_point = (
+                    f"Negotiate rush/expedited lead time from {effective_lead} days to <= {required_lead} days "
+                    f"(target delivery: {stockout_ref.isoformat()}) to avert stockout."
+                )
+                if s.expedited_lead_time_days is not None and s.expedited_lead_time_days <= required_lead:
+                    talking_point += f" (Vendor profile specifies expedited capability of {s.expedited_lead_time_days} days)."
+                levers.append(
+                    NegotiationLever(
+                        lever_type="LEAD_TIME_EXPEDITE",
+                        title=f"Expedite Lead Time with {s.supplier_name}",
+                        target_supplier_id=s.supplier_id,
+                        target_supplier_name=s.supplier_name,
+                        current_value=f"{effective_lead} days",
+                        target_value=f"<= {required_lead} days",
+                        potential_savings=None,
+                        recommended_talking_point=talking_point,
+                    )
+                )
+
+    # 2. MOQ Reduction / Waiver Lever
+    if net_shortage > 0:
+        for s in suppliers:
+            if s.minimum_order_quantity > net_shortage:
+                excess_units = s.minimum_order_quantity - net_shortage
+                excess_capital = round(excess_units * float(s.unit_price), 2)
+                talking_point = (
+                    f"Request supplier MOQ waiver or temporary reduction from {s.minimum_order_quantity} to {net_shortage} units "
+                    f"to eliminate ${excess_capital:,.2f} in excess holding stock."
+                )
+                if getattr(s, "is_moq_negotiable", True):
+                    talking_point += " (Vendor profile indicates flexibility on minimum order quantities)."
+                levers.append(
+                    NegotiationLever(
+                        lever_type="MOQ_REDUCTION",
+                        title=f"Negotiate MOQ Reduction with {s.supplier_name}",
+                        target_supplier_id=s.supplier_id,
+                        target_supplier_name=s.supplier_name,
+                        current_value=f"{s.minimum_order_quantity} units",
+                        target_value=f"{net_shortage} units",
+                        potential_savings=excess_capital,
+                        recommended_talking_point=talking_point,
+                    )
+                )
+
+    # 3. Price Benchmark Counter-Offer Lever
+    if len(suppliers) >= 2:
+        cheapest_s = min(suppliers, key=lambda x: float(x.unit_price))
+        min_price = float(cheapest_s.unit_price)
+        for s in suppliers:
+            s_price = float(s.unit_price)
+            if s_price > min_price:
+                price_diff = round(s_price - min_price, 2)
+                order_qty = net_shortage if net_shortage > 0 else s.minimum_order_quantity
+                savings = round(price_diff * order_qty, 2)
+                talking_point = (
+                    f"Counter-offer incumbent supplier {s.supplier_name} at ${min_price:.2f}/unit "
+                    f"(matching {cheapest_s.supplier_name} quote) for an immediate contract savings of ${savings:,.2f}."
+                )
+                levers.append(
+                    NegotiationLever(
+                        lever_type="PRICE_BENCHMARK_COUNTER_OFFER",
+                        title=f"Price Benchmark Counter-Offer to {s.supplier_name}",
+                        target_supplier_id=s.supplier_id,
+                        target_supplier_name=s.supplier_name,
+                        current_value=f"${s_price:.2f}/unit",
+                        target_value=f"${min_price:.2f}/unit",
+                        potential_savings=savings,
+                        recommended_talking_point=talking_point,
+                    )
+                )
+
+    # 4. Partial Batch Delivery Lever
+    if net_shortage > 1 and timeline.stockout_date:
+        for s in suppliers:
+            effective_lead = s.lead_time_days + max(0, s.historical_delay_days)
+            arrival = evaluation_date + timedelta(days=effective_lead)
+            if arrival > timeline.stockout_date:
+                gap_days = (arrival - timeline.stockout_date).days
+                bridge_units = max(1, round(timeline.daily_demand * gap_days)) if timeline.daily_demand > 0 else 1
+                critical_units = min(net_shortage - 1, max(1, bridge_units))
+                balance_units = net_shortage - critical_units
+                if 0 < critical_units < net_shortage:
+                    talking_point = (
+                        f"Negotiate split delivery: request priority air-shipment of {critical_units} critical units "
+                        f"by {timeline.stockout_date.isoformat()} and balance of {balance_units} units via standard ground transit."
+                    )
+                    levers.append(
+                        NegotiationLever(
+                            lever_type="PARTIAL_BATCH_DELIVERY",
+                            title=f"Partial Split Batch Delivery with {s.supplier_name}",
+                            target_supplier_id=s.supplier_id,
+                            target_supplier_name=s.supplier_name,
+                            current_value=f"{net_shortage} units single standard batch",
+                            target_value=f"{critical_units} urgent + {balance_units} standard",
+                            potential_savings=None,
+                            recommended_talking_point=talking_point,
+                        )
+                    )
+
+    return levers
 
 
 def rank_preferred_option(

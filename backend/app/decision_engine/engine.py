@@ -4,6 +4,7 @@ from app.decision_engine.inventory import (
 )
 from app.decision_engine.options import (
     generate_investigation_pathways,
+    generate_negotiation_levers,
     generate_purchasing_options,
     rank_preferred_option,
 )
@@ -113,12 +114,36 @@ def evaluate_purchasing_decision(input_data: EngineInput) -> DecisionResult:
         facility_available_m3=input_data.inventory.facility_available_m3,
     )
 
+    negotiation_levers = generate_negotiation_levers(
+        suppliers=input_data.suppliers,
+        timeline=timeline,
+        net_shortage=net_requirement,
+        evaluation_date=eval_date,
+        target_delivery_date=target_date,
+        incumbent_supplier_id=rec.supplier_id,
+    )
+
+    calculations["negotiation_levers"] = [
+        {
+            "lever_type": lever.lever_type,
+            "title": lever.title,
+            "target_supplier_id": lever.target_supplier_id,
+            "target_supplier_name": lever.target_supplier_name,
+            "current_value": lever.current_value,
+            "target_value": lever.target_value,
+            "potential_savings": lever.potential_savings,
+            "recommended_talking_point": lever.recommended_talking_point,
+        }
+        for lever in negotiation_levers
+    ]
+
     investigation_options = generate_investigation_pathways(
         timeline=timeline,
         open_orders=input_data.open_orders,
         suppliers=input_data.suppliers,
         evaluation_date=eval_date,
         target_date=timeline.stockout_date or target_date,
+        negotiation_levers=negotiation_levers,
     )
 
     preferred_option, ranking_reasons = rank_preferred_option(

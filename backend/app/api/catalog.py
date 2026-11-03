@@ -43,6 +43,8 @@ def list_suppliers(
                 lead_time_days=sp.lead_time_days,
                 minimum_order_quantity=sp.minimum_order_quantity,
                 available_capacity=sp.available_capacity,
+                is_moq_negotiable=getattr(sp, "is_moq_negotiable", True),
+                expedited_lead_time_days=getattr(sp, "expedited_lead_time_days", None),
             )
             for s, sp in rows
         ]
