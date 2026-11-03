@@ -4,8 +4,41 @@ An autonomous, enterprise-grade AI purchasing agent for supply chain inventory r
 
 ---
 
+## 🎬 Product Walkthrough Demo (2.5 Minutes)
+
+<video src="scripts/demo/ai_purchasing_agent_demo_walkthrough_v2.mp4" controls="controls" width="100%" poster="scripts/demo/screenshots/01_dashboard_pipeline.png">
+  Your browser does not support the video tag.
+</video>
+
+> 🎬 **Direct Video File:** [ai_purchasing_agent_demo_walkthrough_v2.mp4](scripts/demo/ai_purchasing_agent_demo_walkthrough_v2.mp4) *(1080p HD, 2m 45s)*  
+> 🎠 **Interactive Feature Carousel:** [Open Browser-Based Carousel Viewer](scripts/demo/carousel.html) *(Slide through features with arrow keys)*  
+> 📸 **Full Visual Gallery & Rules Tour:** [View Complete Feature & Decision Gallery](scripts/demo/GALLERY.md)
+
+<details open>
+<summary><strong>📸 Quick Feature & Decision Tour (Click to expand / collapse)</strong></summary>
+
+| 1. Dashboard & Pipeline | 2. Deterministic Rule Evaluation |
+|:---:|:---:|
+| [![Dashboard](scripts/demo/screenshots/01_dashboard_pipeline.png)](scripts/demo/GALLERY.md#1-executive-dashboard--po-pipeline) | [![Evaluation](scripts/demo/screenshots/03_single_source_evaluation.png)](scripts/demo/GALLERY.md#3-single-source-rule-evaluation) |
+| *`[Live KPI Metrics]` `[Stockout Risk Guard]`* | *`[Deterministic Rules]` `[Verdict: MODIFY]`* |
+
+| 3. Parameter Diff & History | 4. Multi-Vendor Split Sourcing |
+|:---:|:---:|
+| [![History](scripts/demo/screenshots/05_evaluation_history.png)](scripts/demo/GALLERY.md#5-evaluation-history--parameter-diff-audit) | [![Split](scripts/demo/screenshots/06_split_sourcing.png)](scripts/demo/GALLERY.md#6-multi-vendor-split-sourcing) |
+| *`[Immutable Audit]` `[Diff: 200 → 100]`* | *`[Dual-Vendor Allocation]` `[Risk Hedging]`* |
+
+| 5. Gemini AI Briefing & Approval | 6. 8-Rule Decision Architecture |
+|:---:|:---:|
+| [![Approval](scripts/demo/screenshots/07_gemini_briefing_approval.png)](scripts/demo/GALLERY.md#7-gemini-strategic-intelligence--final-approval) | [![Rules](scripts/demo/screenshots/08_sophisticated_rules_engine.png)](scripts/demo/GALLERY.md#8-enterprise-deterministic-rules-engine-architecture) |
+| *`[Gemini AI Rationale]` `[$400 Negotiation Alpha]`* | *`[8 Enterprise Rules]` `[Zero Hallucination]`* |
+
+</details>
+
+---
+
 ## Table of Contents
 
+- [Product Walkthrough Demo](#-product-walkthrough-demo-25-minutes)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
@@ -259,6 +292,8 @@ The Angular development server starts at `http://localhost:4200`.
 4. **Modify Parameters**: If the agent returns `MODIFY` (e.g., suggesting a lower quantity or alternative supplier), click **Edit Parameters**, update the quantity or supplier, and save.
 5. **Re-evaluate & View History**: Click **Re-evaluate**. The system automatically computes buyer modification deltas (`previous → updated`), records a new chronological snapshot, and displays the changes in the **Evaluation History Timeline**.
 6. **Approve**: Once satisfied with the parameters, click **Approve Recommendation** to finalize human approval.
+
+> 💡 **Visual Walkthrough & Screenshots:** For annotated step-by-step screenshots of every stage, consult the [Feature & Decision Gallery](scripts/demo/GALLERY.md) or launch the offline [Interactive Carousel](scripts/demo/carousel.html).
 
 ---
 

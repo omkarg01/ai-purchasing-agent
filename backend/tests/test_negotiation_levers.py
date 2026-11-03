@@ -262,3 +262,4 @@ def test_deterministic_fallback_negotiation_section():
     assert "**Recommended Buyer Action Plan**" in briefing
     assert "#### Buyer Negotiation Strategy & Counter-Offers" in briefing
     assert "Counter-offer incumbent supplier" in briefing or "Expedite Lead Time" in briefing
+

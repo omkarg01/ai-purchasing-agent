@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Purchasing Agent - Interactive Feature Carousel</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body {
+      background: #020617;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+    
+    header {
+      width: 100%;
+      max-width: 1300px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      background: linear-gradient(135deg, #0284c7, #38bdf8);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.5);
+    }
+    .brand h1 {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .brand p {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+    .video-link-btn {
+      background: rgba(56, 189, 248, 0.15);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 8px 18px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .video-link-btn:hover {
+      background: #38bdf8;
+      color: #020617;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4);
+    }
+
+    .carousel-container {
+      width: 100%;
+      max-width: 1300px;
+      margin: 20px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .viewport {
+      width: 100%;
+      background: #0f172a;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      overflow: hidden;
+      position: relative;
+      aspect-ratio: 16 / 9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out, transform 0.4s ease;
+      transform: scale(0.98);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+    }
+    .slide img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #090d16;
+    }
+
+    .nav-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: all 0.2s;
+      z-index: 20;
+    }
+    .nav-btn:hover {
+      background: #38bdf8;
+      color: #020617;
+      border-color: #38bdf8;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+    }
+    .nav-prev { left: 16px; }
+    .nav-next { right: 16px; }
+
+    .caption-box {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 16px 24px;
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .caption-info h3 {
+      font-size: 17px;
+      font-weight: 700;
+      color: #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .caption-badge {
+      font-size: 11px;
+      text-transform: uppercase;
+      padding: 3px 10px;
+      border-radius: 6px;
+      background: rgba(56, 189, 248, 0.2);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+    .caption-info p {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .slide-counter {
+      font-size: 14px;
+      font-weight: 700;
+      color: #64748b;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .thumbnails {
+      width: 100%;
+      max-width: 1300px;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .thumb {
+      aspect-ratio: 16 / 9;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      cursor: pointer;
+      opacity: 0.6;
+      transition: all 0.2s;
+      background: #0f172a;
+    }
+    .thumb:hover {
+      opacity: 0.9;
+      border-color: rgba(56, 189, 248, 0.5);
+    }
+    .thumb.active {
+      opacity: 1;
+      border-color: #38bdf8;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    }
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    footer {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">📦</div>
+      <div>
+        <h1>AI Purchasing Agent</h1>
+        <p>Interactive Feature &amp; Decision Tour</p>
+      </div>
+    </div>
+    <a href="ai_purchasing_agent_demo_walkthrough_v2.mp4" class="video-link-btn" target="_blank">
+      <span>▶️</span> Watch Full 2.5-Min Video Walkthrough
+    </a>
+  </header>
+
+  <div class="carousel-container">
+    <div class="viewport">
+      <button class="nav-btn nav-prev" onclick="prevSlide()" title="Previous (Left Arrow)">&#10094;</button>
+
+      <div class="slide active">
+        <img src="screenshots/01_dashboard_pipeline.png" alt="Dashboard & KPI Pipeline">
+      </div>
+      <div class="slide">
+        <img src="screenshots/02_create_recommendation.png" alt="Create Purchase Recommendation Form">
+      </div>
+      <div class="slide">
+        <img src="screenshots/03_single_source_evaluation.png" alt="Single-Source Rule Evaluation">
+      </div>
+      <div class="slide">
+        <img src="screenshots/04_edit_parameters.png" alt="Interactive Parameter Adjustment">
+      </div>
+      <div class="slide">
+        <img src="screenshots/05_evaluation_history.png" alt="Evaluation History & Diff Feedback Loop">
+      </div>
+      <div class="slide">
+        <img src="screenshots/06_split_sourcing.png" alt="Multi-Vendor Dual Split Sourcing">
+      </div>
+      <div class="slide">
+        <img src="screenshots/07_gemini_briefing_approval.png" alt="Gemini AI Strategic Briefing & Approval">
+      </div>
+      <div class="slide">
+        <img src="screenshots/08_sophisticated_rules_engine.png" alt="Enterprise Deterministic Rules Architecture">
+      </div>
+
+      <button class="nav-btn nav-next" onclick="nextSlide()" title="Next (Right Arrow)">&#10095;</button>
+    </div>
+
+    <div class="caption-box">
+      <div class="caption-info">
+        <h3 id="caption-title">01 | Dashboard Overview &amp; PO Pipeline <span class="caption-badge" id="caption-tag">Live Metrics</span></h3>
+        <p id="caption-desc">High-level visibility into stockout risks, active replenishment purchase orders, and deterministic status filters.</p>
+      </div>
+      <div class="slide-counter" id="slide-num">1 / 8</div>
+    </div>
+
+    <div class="thumbnails">
+      <div class="thumb active" onclick="goToSlide(0)"><img src="screenshots/01_dashboard_pipeline.png" alt="Thumb 1"></div>
+      <div class="thumb" onclick="goToSlide(1)"><img src="screenshots/02_create_recommendation.png" alt="Thumb 2"></div>
+      <div class="thumb" onclick="goToSlide(2)"><img src="screenshots/03_single_source_evaluation.png" alt="Thumb 3"></div>
+      <div class="thumb" onclick="goToSlide(3)"><img src="screenshots/04_edit_parameters.png" alt="Thumb 4"></div>
+      <div class="thumb" onclick="goToSlide(4)"><img src="screenshots/05_evaluation_history.png" alt="Thumb 5"></div>
+      <div class="thumb" onclick="goToSlide(5)"><img src="screenshots/06_split_sourcing.png" alt="Thumb 6"></div>
+      <div class="thumb" onclick="goToSlide(6)"><img src="screenshots/07_gemini_briefing_approval.png" alt="Thumb 7"></div>
+      <div class="thumb" onclick="goToSlide(7)"><img src="screenshots/08_sophisticated_rules_engine.png" alt="Thumb 8"></div>
+    </div>
+  </div>
+
+  <footer>
+    Tip: Use <strong>Left</strong> (&#8592;) and <strong>Right</strong> (&#8594;) keys to navigate slides.
+  </footer>
+
+  <script>
+    const slides = document.querySelectorAll('.slide');
+    const thumbs = document.querySelectorAll('.thumb');
+    const titleEl = document.getElementById('caption-title');
+    const tagEl = document.getElementById('caption-tag');
+    const descEl = document.getElementById('caption-desc');
+    const numEl = document.getElementById('slide-num');
+
+    const meta = [
+      {
+        title: "01 | Dashboard Overview & PO Pipeline",
+        tag: "Live Metrics",
+        desc: "Instant visibility into stockout risks, active replenishment orders, and real-time PO pipeline KPIs."
+      },
+      {
+        title: "02 | Create Purchase Recommendation",
+        tag: "Order Drafting",
+        desc: "Interactive drafting of replenishment requirements with automatic SKU catalog lookup and supplier matching."
+      },
+      {
+        title: "03 | Single-Source Rule Evaluation",
+        tag: "Rule Engine",
+        desc: "Deterministic verification flags warehouse capacity overage and recommends down-sizing order to 100 units."
+      },
+      {
+        title: "04 | Interactive Parameter Adjustment",
+        tag: "Human-in-the-Loop",
+        desc: "Procurement buyer directly adjusts parameters (200 → 100 units) to align with warehouse storage constraints."
+      },
+      {
+        title: "05 | Evaluation History & Diff Feedback Loop",
+        tag: "Audit Trail",
+        desc: "Permanent immutable ledger displaying successive evaluation runs and real-time visual parameter diffs."
+      },
+      {
+        title: "06 | Multi-Vendor Dual Split Sourcing",
+        tag: "Risk Hedging",
+        desc: "Dual-supplier allocation balances expedited delivery speed (250 units) with cost-effective bulk pricing (250 units)."
+      },
+      {
+        title: "07 | Gemini AI Strategic Briefing & Approval",
+        tag: "Gemini AI",
+        desc: "Google Gemini synthesizes mathematical outputs into executive rationale, surfacing a $400 counter-offer negotiation alpha."
+      },
+      {
+        title: "08 | Enterprise Deterministic Rules Architecture",
+        tag: "8 Core Rules",
+        desc: "Comprehensive 8-rule pipeline: Lead-time padding, MOQ optimization, cubic storage limits, budget checks, and risk diversification."
+      }
+    ];
+
+    let current = 0;
+
+    function updateView() {
+      slides.forEach((s, i) => s.classList.toggle('active', i === current));
+      thumbs.forEach((t, i) => t.classList.toggle('active', i === current));
+      const m = meta[current];
+      titleEl.childNodes[0].nodeValue = m.title + " ";
+      tagEl.textContent = m.tag;
+      descEl.textContent = m.desc;
+      numEl.textContent = `${current + 1} / ${slides.length}`;
+    }
+
+    function nextSlide() {
+      current = (current + 1) % slides.length;
+      updateView();
+    }
+
+    function prevSlide() {
+      current = (current - 1 + slides.length) % slides.length;
+      updateView();
+    }
+
+    function goToSlide(idx) {
+      current = idx;
+      updateView();
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+  </script>
+</body>
+</html>
+
