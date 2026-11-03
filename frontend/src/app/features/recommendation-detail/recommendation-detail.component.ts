@@ -172,35 +172,35 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
                   </div>
                 </div>
 
-                <!-- Comparison Grid -->
-                <div class="comparison-grid">
-                  <div class="comparison-card">
-                    <span class="comp-label">Quantity Comparison</span>
+                <!-- Proposed Modifications (Only shown when actual differences exist) -->
+                <div *ngIf="hasModifications()" class="comparison-grid" [class.single-card]="!isQuantityModified() || !isSupplierModified()">
+                  <div *ngIf="isQuantityModified()" class="comparison-card">
+                    <span class="comp-label">Proposed Quantity Adjustment</span>
                     <div class="comp-values">
                       <div class="comp-item">
-                        <span class="val-sub">Original</span>
+                        <span class="val-sub">Original Request</span>
                         <span class="val-num">{{ recommendation()?.recommended_quantity }}</span>
                       </div>
                       <div class="comp-arrow">&rarr;</div>
-                      <div class="comp-item" [class.val-highlight]="isQuantityModified()">
-                        <span class="val-sub">Suggested</span>
+                      <div class="comp-item val-highlight">
+                        <span class="val-sub">AI Suggested</span>
                         <span class="val-num">{{ recommendation()?.agent_suggested_quantity ?? '—' }}</span>
                       </div>
                     </div>
                   </div>
 
-                  <div class="comparison-card">
-                    <span class="comp-label">Supplier Comparison</span>
+                  <div *ngIf="isSupplierModified()" class="comparison-card">
+                    <span class="comp-label">Proposed Supplier Alternative</span>
                     <div class="comp-values">
                       <div class="comp-item">
-                        <span class="val-sub">Original</span>
+                        <span class="val-sub">Original Request</span>
                         <span class="val-num">
                           {{ recommendation()?.supplier_name || ('Supplier #' + recommendation()?.supplier_id) }}
                         </span>
                       </div>
                       <div class="comp-arrow">&rarr;</div>
-                      <div class="comp-item" [class.val-highlight]="isSupplierModified()">
-                        <span class="val-sub">Suggested</span>
+                      <div class="comp-item val-highlight">
+                        <span class="val-sub">AI Preferred</span>
                         <span class="val-num">
                           {{ recommendation()?.agent_suggested_supplier_name || (recommendation()?.agent_suggested_supplier_id ? ('Supplier #' + recommendation()?.agent_suggested_supplier_id) : '—') }}
                         </span>
@@ -459,6 +459,9 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
+    }
+    .comparison-grid.single-card {
+      grid-template-columns: 1fr;
     }
     .comparison-card {
       background: #f8fafc;
@@ -798,6 +801,10 @@ export class RecommendationDetailComponent implements OnInit {
     const rec = this.recommendation();
     if (!rec || rec.agent_suggested_supplier_id === null || rec.agent_suggested_supplier_id === undefined) return false;
     return rec.agent_suggested_supplier_id !== rec.supplier_id;
+  }
+
+  hasModifications(): boolean {
+    return this.isQuantityModified() || this.isSupplierModified();
   }
 
   formattedReasoning(): string[] {
