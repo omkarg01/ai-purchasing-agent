@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.recommendations import router as recommendations_router
+from app.api.catalog import router as catalog_router
 
 app = FastAPI(
     title="AI Purchasing Agent API",
@@ -10,6 +11,8 @@ app = FastAPI(
 # Support both root-relative and /api-prefixed routes
 app.include_router(recommendations_router)
 app.include_router(recommendations_router, prefix="/api")
+app.include_router(catalog_router)
+app.include_router(catalog_router, prefix="/api")
 
 
 @app.get("/health")

@@ -2,7 +2,11 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { RecommendationService } from './recommendation.service';
-import { RecommendationResponse } from '../models/recommendation.model';
+import {
+  RecommendationResponse,
+  ProductLookup,
+  SupplierLookup,
+} from '../models/recommendation.model';
 
 describe('RecommendationService', () => {
   let service: RecommendationService;
@@ -60,6 +64,58 @@ describe('RecommendationService', () => {
     req.flush(mockRecommendation);
   });
 
+  it('should create recommendation', () => {
+    service.create({
+      product_id: 101,
+      supplier_id: 5,
+      recommended_quantity: 200,
+      requested_delivery_date: '2026-11-10',
+    }).subscribe((data) => {
+      expect(data.id).toBe(1);
+    });
+
+    const req = httpTesting.expectOne('/api/recommendations');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.recommended_quantity).toBe(200);
+    req.flush(mockRecommendation);
+  });
+
+  it('should update recommendation', () => {
+    const updated = { ...mockRecommendation, recommended_quantity: 350 };
+    service.update(1, { recommended_quantity: 350 }).subscribe((data) => {
+      expect(data.recommended_quantity).toBe(350);
+    });
+
+    const req = httpTesting.expectOne('/api/recommendations/1');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body.recommended_quantity).toBe(350);
+    req.flush(updated);
+  });
+
+  it('should fetch product catalog', () => {
+    const mockProducts: ProductLookup[] = [{ id: 1, name: 'Widget A', sku: 'SKU-01' }];
+    service.getProducts().subscribe((data) => {
+      expect(data.length).toBe(1);
+      expect(data[0].sku).toBe('SKU-01');
+    });
+
+    const req = httpTesting.expectOne('/api/catalog/products');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockProducts);
+  });
+
+  it('should fetch supplier catalog', () => {
+    const mockSuppliers: SupplierLookup[] = [{ id: 2, supplier_name: 'Acme Corp' }];
+    service.getSuppliers().subscribe((data) => {
+      expect(data.length).toBe(1);
+      expect(data[0].supplier_name).toBe('Acme Corp');
+    });
+
+    const req = httpTesting.expectOne('/api/catalog/suppliers');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockSuppliers);
+  });
+
   it('should run evaluation with deterministic engine', () => {
     service.runEvaluation(1).subscribe((data) => {
       expect(data.agent_decision).toBe('ACCEPT');
@@ -81,4 +137,3 @@ describe('RecommendationService', () => {
     req.flush(approved);
   });
 });
-

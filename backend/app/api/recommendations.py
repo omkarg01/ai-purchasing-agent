@@ -5,7 +5,12 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.schemas import EvaluationRequest, RecommendationResponse
+from app.api.schemas import (
+    EvaluationRequest,
+    RecommendationCreateRequest,
+    RecommendationResponse,
+    RecommendationUpdateRequest,
+)
 from app.database.session import get_db
 from app.decision_engine import (
     BudgetInput,
@@ -18,11 +23,13 @@ from app.decision_engine import (
     evaluate_purchasing_decision,
 )
 from app.models.demand_forecast import DemandForecast
+from app.models.product import Product
 from app.models.purchase_order import PurchaseOrder
 from app.models.purchase_recommendation import PurchaseRecommendation
 from app.models.purchasing_budget import PurchasingBudget
 from app.models.supplier import Supplier
 from app.models.supplier_product import SupplierProduct
+from app.orchestrator.agent_briefing import generate_purchasing_briefing
 
 router = APIRouter(prefix="/recommendations", tags=["recommendations"])
 
@@ -53,6 +60,117 @@ def get_recommendation(
             detail="Purchase recommendation not found",
         )
     return recommendation
+
+@router.post(
+    "",
+    response_model=RecommendationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_recommendation(
+    payload: RecommendationCreateRequest,
+    db: Session = Depends(get_db),
+):
+    """Creates a new purchasing recommendation in PENDING_APPROVAL status."""
+    # 1. Validate product exists
+    product = db.query(Product).filter_by(id=payload.product_id).first()
+    if not product:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Product with id {payload.product_id} does not exist",
+        )
+
+    # 2. Validate supplier exists if provided
+    if payload.supplier_id is not None:
+        supplier = db.query(Supplier).filter_by(id=payload.supplier_id).first()
+        if not supplier:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Supplier with id {payload.supplier_id} does not exist",
+            )
+
+    # 3. Validate delivery date is not in the past
+    if payload.requested_delivery_date < date.today():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Requested delivery date cannot be in the past",
+        )
+
+    new_rec = PurchaseRecommendation(
+        product_id=payload.product_id,
+        supplier_id=payload.supplier_id,
+        recommended_quantity=payload.recommended_quantity,
+        requested_delivery_date=payload.requested_delivery_date,
+        status="PENDING_APPROVAL",
+    )
+    db.add(new_rec)
+    db.commit()
+    db.refresh(new_rec)
+    return new_rec
+
+
+@router.put(
+    "/{recommendation_id}",
+    response_model=RecommendationResponse,
+)
+def update_recommendation(
+    recommendation_id: int,
+    payload: RecommendationUpdateRequest,
+    db: Session = Depends(get_db),
+):
+    """Updates an existing purchasing recommendation.
+
+    Invariants enforced:
+    - Only recommendations in 'PENDING_APPROVAL' status can be modified.
+    - If already 'APPROVED', returns 400 Bad Request.
+    - Modifying parameters resets previous AI evaluation to ensure fresh evaluation.
+    """
+    rec = db.query(PurchaseRecommendation).filter_by(id=recommendation_id).first()
+    if not rec:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Purchase recommendation not found",
+        )
+
+    if rec.status != "PENDING_APPROVAL":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"Cannot edit recommendation with status '{rec.status}'. "
+                "Only recommendations with status 'PENDING_APPROVAL' can be edited."
+            ),
+        )
+
+    if payload.supplier_id is not None:
+        supplier = db.query(Supplier).filter_by(id=payload.supplier_id).first()
+        if not supplier:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Supplier with id {payload.supplier_id} does not exist",
+            )
+        rec.supplier_id = payload.supplier_id
+
+    if payload.recommended_quantity is not None:
+        rec.recommended_quantity = payload.recommended_quantity
+
+    if payload.requested_delivery_date is not None:
+        if payload.requested_delivery_date < date.today():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Requested delivery date cannot be in the past",
+            )
+        rec.requested_delivery_date = payload.requested_delivery_date
+
+    # Reset previous AI evaluation because parameters changed
+    rec.agent_decision = None
+    rec.agent_suggested_quantity = None
+    rec.agent_suggested_supplier_id = None
+    rec.agent_reasoning = None
+    rec.evaluated_at = None
+
+    db.commit()
+    db.refresh(rec)
+    return rec
+
 
 
 @router.post(

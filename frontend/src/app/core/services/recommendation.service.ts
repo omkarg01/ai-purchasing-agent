@@ -1,7 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { RecommendationResponse, EvaluationPayload } from '../models/recommendation.model';
+import {
+  RecommendationResponse,
+  RecommendationCreatePayload,
+  RecommendationUpdatePayload,
+  ProductLookup,
+  SupplierLookup,
+  EvaluationPayload,
+} from '../models/recommendation.model';
 
 @Injectable({
   providedIn: 'root',
@@ -9,6 +16,7 @@ import { RecommendationResponse, EvaluationPayload } from '../models/recommendat
 export class RecommendationService {
   private readonly http = inject(HttpClient);
   private readonly baseUrl = '/api/recommendations';
+  private readonly catalogUrl = '/api/catalog';
 
   list(): Observable<RecommendationResponse[]> {
     return this.http.get<RecommendationResponse[]>(this.baseUrl);
@@ -16,6 +24,14 @@ export class RecommendationService {
 
   getById(id: number): Observable<RecommendationResponse> {
     return this.http.get<RecommendationResponse>(`${this.baseUrl}/${id}`);
+  }
+
+  create(payload: RecommendationCreatePayload): Observable<RecommendationResponse> {
+    return this.http.post<RecommendationResponse>(this.baseUrl, payload);
+  }
+
+  update(id: number, payload: RecommendationUpdatePayload): Observable<RecommendationResponse> {
+    return this.http.put<RecommendationResponse>(`${this.baseUrl}/${id}`, payload);
   }
 
   runEvaluation(id: number): Observable<RecommendationResponse> {
@@ -29,5 +45,12 @@ export class RecommendationService {
   evaluateCustom(id: number, payload: EvaluationPayload): Observable<RecommendationResponse> {
     return this.http.post<RecommendationResponse>(`${this.baseUrl}/${id}/evaluate`, payload);
   }
-}
 
+  getProducts(): Observable<ProductLookup[]> {
+    return this.http.get<ProductLookup[]>(`${this.catalogUrl}/products`);
+  }
+
+  getSuppliers(): Observable<SupplierLookup[]> {
+    return this.http.get<SupplierLookup[]>(`${this.catalogUrl}/suppliers`);
+  }
+}

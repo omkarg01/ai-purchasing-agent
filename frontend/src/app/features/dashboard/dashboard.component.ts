@@ -16,14 +16,23 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
           <h1 class="page-title">Purchasing Recommendations</h1>
           <p class="page-subtitle">Review, evaluate, and approve intelligent inventory purchasing recommendations.</p>
         </div>
-        <button class="btn btn-secondary" (click)="loadRecommendations()" [disabled]="loading()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
-            <polyline points="23 4 23 10 17 10"></polyline>
-            <polyline points="1 20 1 14 7 14"></polyline>
-            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-          </svg>
-          Refresh
-        </button>
+        <div class="header-actions">
+          <a routerLink="/recommendations/new" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            + New Recommendation
+          </a>
+          <button class="btn btn-secondary" (click)="loadRecommendations()" [disabled]="loading()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+              <polyline points="23 4 23 10 17 10"></polyline>
+              <polyline points="1 20 1 14 7 14"></polyline>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <!-- KPI Summary Cards -->
@@ -123,6 +132,11 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
     .page-title {
       font-size: 1.75rem;

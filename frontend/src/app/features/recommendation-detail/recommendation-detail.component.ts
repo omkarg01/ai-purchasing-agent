@@ -72,6 +72,20 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
               {{ evaluating() ? 'Running Engine...' : (recommendation()?.agent_decision ? 'Re-run Evaluation' : 'Run AI Evaluation') }}
             </button>
 
+            <!-- Edit Parameters Button -->
+            <a
+              *ngIf="canApprove()"
+              [routerLink]="['/recommendations', recommendation()?.id, 'edit']"
+              class="btn btn-secondary"
+              title="Edit parameters before approval"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+              </svg>
+              Edit Parameters
+            </a>
+
             <!-- Approve Button -->
             <button
               class="btn btn-success"
@@ -127,8 +141,8 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
           <!-- Right Column: AI Decision Engine Evaluation -->
           <div class="panel">
             <div class="panel-header">
-              <h3 class="panel-title">AI Decision Support</h3>
-              <span class="panel-tag engine-tag">Deterministic Engine</span>
+              <h3 class="panel-title">Strategic Purchasing Intelligence</h3>
+              <span class="panel-tag engine-tag">Autonomous Analysis</span>
             </div>
 
             <div class="panel-body">
@@ -189,12 +203,9 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
 
                 <!-- Structured Reasoning -->
                 <div class="reasoning-section">
-                  <h4 class="reasoning-title">Evaluation Reasoning &amp; Evidence</h4>
-                  <div class="reasoning-box">
-                    <div *ngFor="let point of formattedReasoning()" class="reasoning-point">
-                      <span class="bullet">•</span>
-                      <p>{{ point }}</p>
-                    </div>
+                  <h4 class="reasoning-title">Purchasing Intelligence Briefing</h4>
+                  <div class="reasoning-box briefing-box">
+                    <div class="briefing-text">{{ recommendation()?.agent_reasoning }}</div>
                   </div>
                 </div>
 
@@ -500,10 +511,13 @@ import { StatusBadgeComponent } from '../../shared/components/status-badge/statu
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      padding: 1.1rem 1.25rem;
+    }
+    .briefing-text {
+      font-size: 0.875rem;
+      color: #1e293b;
+      white-space: pre-wrap;
+      line-height: 1.6;
     }
     .reasoning-point {
       display: flex;
