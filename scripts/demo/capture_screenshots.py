@@ -153,14 +153,44 @@ def capture_all():
 
         # 07 Gemini Briefing & Approval
         print("Capturing 07_gemini_briefing_approval.png...")
+        import json
+        evaluated_rec = {
+            "id": 2,
+            "product_id": 2,
+            "product_name": "Electronic Micro-Gadget B",
+            "product_sku": "SKU-GADG-002",
+            "recommended_quantity": 100,
+            "supplier_id": 3,
+            "supplier_name": "QuickParts Express",
+            "requested_delivery_date": "2026-11-11",
+            "status": "PENDING_APPROVAL",
+            "agent_decision": "ACCEPT",
+            "agent_suggested_quantity": 100,
+            "agent_suggested_supplier_id": 3,
+            "agent_suggested_supplier_name": "QuickParts Express",
+            "evaluated_at": "2026-11-03T14:20:00Z",
+            "agent_reasoning": (
+                "**Strategic Assessment**\n\n"
+                "The proposed order of 100 units for Electronic Micro-Gadget B is fully validated and recommended for approval. "
+                "Delivery with QuickParts Express meets operational timeline requirements and satisfies projected demand.\n\n"
+                "**Supply & Operational Analysis**\n\n"
+                "- Selected QuickParts Express as preferred: delivers on 2026-11-06 before target deadline at lowest cost ($2,200.00).\n"
+                "- Operational constraints verified: Lead time, MOQ, storage limits, and remaining purchasing budget.\n\n"
+                "**Recommended Buyer Action Plan**\n\n"
+                "Execute purchase order for 100 units with QuickParts Express.\n\n"
+                "#### Buyer Negotiation Strategy & Counter-Offers\n\n"
+                "- **Price Benchmark Counter-Offer to QuickParts Express**: Counter-offer incumbent supplier QuickParts Express at $18.00/unit (matching Pacific Rim quote) for an immediate contract savings of $400.00."
+            )
+        }
+        page.route("**/api/recommendations/2", lambda route: route.fulfill(
+            status=200, content_type="application/json", body=json.dumps(evaluated_rec)
+        ))
         page.goto("http://localhost:4200/recommendations/2", wait_until="networkidle")
         page.wait_for_timeout(1000)
-        page.evaluate("window.scrollTo(0, 320)")
-        page.wait_for_timeout(500)
         inject_badges(page, [
-            {"top": "380px", "left": "250px", "text": "Gemini Strategic Rationale", "type": "purple"},
-            {"top": "440px", "left": "780px", "text": "$400 Negotiation Alpha", "type": "success"},
-            {"top": "680px", "left": "920px", "text": "1-Click PO Sign-Off", "type": "info"}
+            {"top": "130px", "left": "1280px", "text": "1-Click PO Approval", "type": "info"},
+            {"top": "320px", "left": "1300px", "text": "Verdict: ACCEPT", "type": "success"},
+            {"top": "930px", "left": "1260px", "text": "$400 Negotiation Alpha", "type": "purple"}
         ])
         page.screenshot(path=os.path.join(OUTPUT_DIR, "07_gemini_briefing_approval.png"))
 
